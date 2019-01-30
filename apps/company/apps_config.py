@@ -4,5 +4,5 @@ from __future__ import unicode_literals
 from django.apps import AppConfig
 
 
-class AuthsConfig(AppConfig):
-    name = 'auths'
+class CompanyConfig(AppConfig):
+    name = 'company'

@@ -4,5 +4,5 @@ from __future__ import unicode_literals
 from django.apps import AppConfig
 
 
-class CompaniesConfig(AppConfig):
-    name = 'companies'
+class WorkflowTemplateConfig(AppConfig):
+    name = 'workflow_template'

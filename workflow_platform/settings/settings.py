@@ -27,6 +27,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+# AUTH_USER_MODEL = 'authentication.User'
 
 # Application definition
 
@@ -37,6 +38,18 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    'rest_framework',
+    'rest_framework.authtoken',
+    'rest_framework_swagger',
+
+    'django_extensions',
+
+    'apps.authentication',
+    'apps.company',
+    'apps.workflow_template',
+    'apps.workflow'
+
 ]
 
 MIDDLEWARE = [
