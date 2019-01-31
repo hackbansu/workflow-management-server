@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+import uuid
 
 from django.db import models
 from django.contrib.postgres.fields import CICharField
@@ -24,6 +25,8 @@ class Workflow(models.Model):
     '''
     Workflow model.
     '''
+    workflow_id = models.UUIDField(
+        default=uuid.uuid4, editable=False, unique=True, verbose_name='workflow id')
     template = models.ForeignKey(to=WorkflowTemplate, on_delete=models.PROTECT)
     name = CICharField( max_length=100, null=False, blank=False)
     creator = models.ForeignKey(to= User, on_delete=models.PROTECT )
@@ -39,6 +42,8 @@ class Task(models.Model):
     Tasks in workflows.
     '''
     TASK_STATUS_CHOICES_TUP = ((value, key) for (key, value) in TASK_STATUS_CHOICES.iteritems() )
+    task_id = models.UUIDField(
+        default=uuid.uuid4, editable=False, unique=True, verbose_name='task id')
     workflow = models.ForeignKey(to=Workflow, on_delete=models.CASCADE)
     title = CICharField( max_length=100, null=False, blank=False)
     description = models.TextField( null=False, blank=False)
