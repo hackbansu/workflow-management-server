@@ -27,7 +27,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-# AUTH_USER_MODEL = 'authentication.User'
+# AUTH_USER_MODEL = 'workflow_auth.User'
 
 # Application definition
 
@@ -45,10 +45,10 @@ INSTALLED_APPS = [
 
     'django_extensions',
 
-    'apps.authentication',
-    'apps.company',
-    'apps.workflow_template',
-    'apps.workflow'
+    'apps.auth.apps_config.AuthConfig',
+    'apps.company.apps_config.CompanyConfig',
+    'apps.workflow_template.apps_config.WorkflowTemplateConfig',
+    'apps.workflow.apps_config.WorkflowConfig'
 
 ]
 

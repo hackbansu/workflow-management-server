@@ -5,4 +5,4 @@ from django.apps import AppConfig
 
 
 class WorkflowTemplateConfig(AppConfig):
-    name = 'workflow_template'
+    name = 'apps.workflow_template'
