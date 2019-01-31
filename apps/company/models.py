@@ -5,101 +5,99 @@ import uuid
 
 from django.db import models
 from django.contrib.auth import get_user_model
-from django.contrib.postgres.fields import CITextField, CICharField
+from django.contrib.postgres.fields import CICharField
 
 from partial_index import PartialIndex, PQ
 
+from apps.common.models import BaseModel
+from apps.common.constant import (
+    DESIGNATION,
+    USER_STATUS,
+    LINK_TYPE,
+    COMPANY_STATUS
+)
+
 User = get_user_model()
 
-DESIGNATION_CHOICES = {
-    'HR': 0,
-    'CEO': 1,
-    'CTO': 2,
-    'SDE-1': 3,
-    'SDE-2': 4,
-}
 
-STATUS_CHOICES = {
-    'INVITED': 0,
-    'ACTIVE': 1,
-    'INACTIVE': 2
-}
-
-LINK_NAME_CHOICES = {
-    'TWITTER': 0,
-    'FACEBOOK': 1,
-    'GOOGLE': 2
-}
-
-
-class BaseModel(models.Model):
-    '''
-    Abstract model to provide created and modified fields.
-    '''
-    created = models.DateTimeField(auto_now_add=True)
-    modified = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        abstract = True
+def company_logo_dir(_, filename):
+    return 'company/logo/{uuid}_{filename}'.format(
+        uuid=uuid.uuid4(),
+        filename=filename)
 
 
 class Company(BaseModel):
     '''
     All registered companies.
     '''
-    company_id = models.UUIDField(
-        default=uuid.uuid4, editable=False, unique=True, verbose_name='company id')
-    name = CICharField(unique=True, max_length=100, null=False, blank=False)
-    address = CITextField( null=False, blank=False)
-    is_verified = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=True)
-    logo = models.ImageField(upload_to='company/logo/')
+    COMPANY_STATUS_CHOICES = (
+        choice for choice in zip(COMPANY_STATUS, COMPANY_STATUS._fields))
+
+    name = CICharField(unique=True, max_length=256)
+    address = models.CharField(max_length=256)
+    city = models.CharField(max_length=128, blank=True)
+    state = models.CharField(max_length=128, blank=True)
+    status = models.PositiveIntegerField(
+        choices=COMPANY_STATUS_CHOICES,
+        default=COMPANY_STATUS.UNVERIFIED)
+    logo = models.ImageField(upload_to=company_logo_dir)
 
     def __unicode__(self):
         return self.name
+
 
 class Link(BaseModel):
     '''
     Social links of companies
     '''
-    NAME_CHOICES_TUP = ((value, key) for (key, value) in LINK_NAME_CHOICES.iteritems() )
+    LINK_TYPE_CHOICES = (choice for choice in zip(
+        LINK_TYPE, LINK_TYPE._fields))
 
     company = models.ForeignKey(
         to=Company, on_delete=models.CASCADE, related_name='links')
-    name = models.PositiveIntegerField(choices=NAME_CHOICES_TUP)
+    link_type = models.PositiveIntegerField(
+        choices=LINK_TYPE_CHOICES, default=LINK_TYPE.TWITTER)
     url = models.URLField()
 
     class Meta:
-        unique_together=('company', 'name')
+        unique_together = ('company', 'link_type')
 
     def __unicode__(self):
-        return '{}-#-{}'.format(self.company.name, self.name)
+        return '{company}-#-{status}'.format(
+            company=self.company_id,
+            status=self.get_link_type_display)
 
 
 class UserCompany(BaseModel):
     '''
     Model holding employees of companies
     '''
-    DESIGNATION_CHOICES_TUP = ((value, key)
-                               for (key, value) in DESIGNATION_CHOICES.iteritems() )
-    STATUS_CHOICES_TUP = ((value, key) for (key, value) in STATUS_CHOICES.iteritems() )
+    DESIGNATION_CHOICES = (choice for choice in zip(
+        DESIGNATION, DESIGNATION._fields))
+    USER_STATUS_CHOICES = (choice for choice in zip(
+        USER_STATUS, USER_STATUS._fields))
 
     user = models.ForeignKey(
-        to=User, on_delete=models.PROTECT, related_name='companies')
+        to=User, on_delete=models.PROTECT, related_name='usercompany')
     company = models.ForeignKey(
-        to=Company, on_delete=models.PROTECT, related_name='users')
-    designation = models.PositiveIntegerField(choices=DESIGNATION_CHOICES_TUP)
-    join_on = models.DateTimeField()
-    inactive_on = models.DateTimeField(null=True)
-    status = models.PositiveIntegerField(choices=STATUS_CHOICES_TUP)
+        to=Company, on_delete=models.PROTECT, related_name='employees')
+    designation = models.PositiveIntegerField(
+        choices=DESIGNATION_CHOICES, default=DESIGNATION.SDE_1)
+    join_at = models.DateTimeField(null=True, default=None)
+    left_at = models.DateTimeField(null=True, default=None)
+    status = models.PositiveIntegerField(
+        choices=USER_STATUS_CHOICES, default=USER_STATUS.INVITED)
     is_admin = models.BooleanField(default=False)
 
     class Meta:
         indexes = [
-            PartialIndex(fields=['user', 'company'], unique=True, where=
-            PQ(status__in=(STATUS_CHOICES['INVITED'],STATUS_CHOICES['ACTIVE'])) )
+            PartialIndex(fields=['user', 'company'],
+                         unique=True,
+                         where=PQ(
+                status__in=(USER_STATUS.INVITED, USER_STATUS.INACTIVE)))
         ]
 
     def __unicode__(self):
-        return '{}-#-{}-#-{}'.format(self.user.name, self.company.name, self.status)
-
+        return '{user}-#-{company}'.format(
+            user=self.user_id,
+            company=self.company_id)
