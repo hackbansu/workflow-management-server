@@ -27,7 +27,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-# AUTH_USER_MODEL = 'workflow_auth.User'
+AUTH_USER_MODEL = 'workflow_auth.User'
 
 # Application definition
 
