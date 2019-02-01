@@ -85,7 +85,7 @@ class UserCompany(BaseModel):
         on_delete=models.PROTECT,
         related_name='user_companies'
     )
-    designation = models.CharField()
+    designation = models.CharField(max_length=32)
     join_at = models.DateTimeField(null=True, default=None)
     left_at = models.DateTimeField(null=True, default=None)
     status = models.PositiveIntegerField(
