@@ -1,6 +1,9 @@
-# from django.conf.urls import url
-# from django.contrib import admin
+from django.conf.urls import url
+from rest_framework import routers
 
-# urlpatterns = [
-#     url(r'^', ),
-# ]
+from apps.auth.views import UserView
+
+router = routers.SimpleRouter()
+router.register('user', UserView)
+
+urlpatterns = router.urls

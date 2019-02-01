@@ -9,6 +9,7 @@ from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.models import UserManager as ParentUserManager
 from django.contrib.postgres.fields import CIEmailField
 from django.db import models
+
 from rest_framework.authtoken.models import Token
 
 
@@ -82,12 +83,16 @@ class User(AbstractUser):
 
     @property
     def name(self):
-        'full name of user.'
+        '''
+        full name of user.
+        '''
         return '{first_name} {last_name}'.format(
             first_name=self.first_name,
             last_name=self.last_name)
 
     @property
     def token(self):
-        'user auth token'
+        '''
+        user auth token.
+        '''
         return Token.objects.get_or_create(user=self)[0].key
