@@ -2,15 +2,21 @@
 # pylint:disable=W0221
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
-
+from datetime import datetime
 import uuid
+import pytz
 
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.models import UserManager as ParentUserManager
+from django.contrib.auth.tokens import default_token_generator
 from django.contrib.postgres.fields import CIEmailField
 from django.db import models
+from django.utils import timezone as tz
 
 from rest_framework.authtoken.models import Token
+
+from workflow_platform.settings.settings import TIME_ZONE
+from apps.common import constant as common_constant
 
 
 class UserManager(ParentUserManager):
@@ -75,7 +81,7 @@ class User(AbstractUser):
     username = None
     first_name = models.CharField(max_length=128)
     email = CIEmailField(unique=True)
-    profile_photo = models.ImageField(upload_to=usr_profil_dir)
+    profile_photo = models.ImageField(upload_to=usr_profil_dir, blank=True)
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
 
@@ -96,3 +102,25 @@ class User(AbstractUser):
         user auth token.
         '''
         return Token.objects.get_or_create(user=self)[0].key
+
+    def reset_password(self):
+        '''
+        send reset password mail
+        '''
+        token = '{token}--{uid}'.format(
+            token=default_token_generator.make_token(user=self),
+            uid=self.id
+        )
+
+        self.email_user(
+            message='password reset token is {token}'.format(token=token),
+            **common_constant.RESET_PASSWORD_EMAIL
+        )
+        print token
+        return token
+
+    def login_now(self):
+        current_tz = pytz.timezone(TIME_ZONE)
+        self.last_login = tz.make_aware(datetime.now(), current_tz)
+        self.save()
+        return self.token

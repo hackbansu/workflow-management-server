@@ -5,7 +5,7 @@
 - Python [v2.7.x](https://www.python.org/download/releases/2.7/)
 
 ## Setup Instruction
-- Setup [python virtual environment](https://uoa-eresearch.github.io/eresearch-cookbook/recipe/2014/11/26/python-virtual-env/)
+- Setup [python virtual environment](https://virtualenvwrapper.readthedocs.io/en/latest/)
 - Install project dependencies 
 ```
 pip install -r requirements.txt
