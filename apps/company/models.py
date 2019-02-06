@@ -79,7 +79,6 @@ class UserCompany(BaseModel):
         to=User,
         on_delete=models.PROTECT,
         related_name='user_companies',
-        
     )
     company = models.ForeignKey(
         to=Company,
@@ -87,8 +86,8 @@ class UserCompany(BaseModel):
         related_name='user_companies'
     )
     designation = models.CharField(max_length=32)
-    join_at = models.DateField(null=True, blank=True)
-    left_at = models.DateField(null=True, blank=True)
+    join_at = models.DateTimeField(null=True, blank=True)
+    left_at = models.DateTimeField(null=True, blank=True)
     status = models.PositiveIntegerField(
         choices=(choice for choice in zip(
             common_constant.USER_STATUS,

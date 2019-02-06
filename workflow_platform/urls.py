@@ -15,10 +15,18 @@ Including another URLconf
 """
 from django.conf.urls import url, include
 from django.contrib import admin
-from apps.auth.urls import  urlpatterns as user_urls
+
+from rest_framework_swagger.views import get_swagger_view
+
+from apps.auth.urls import urlpatterns as user_urls
 from apps.company.urls import urlpatterns as company_urls
+
+
+schema_view = get_swagger_view('workflow platform')
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-    url(r'^api/', include([ url  for url_patterns in [user_urls, company_urls] for url in url_patterns   ] ) )
+    url(r'^swagger/', schema_view),
+    url(r'^api/', include([url for url_patterns in [user_urls,
+                                                    company_urls] for url in url_patterns])),
 ]

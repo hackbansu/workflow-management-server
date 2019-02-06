@@ -1,0 +1,2 @@
+Hi {{ name }}
+    You are invited to join {{ company }}. Your invitation token is {{ token }}.

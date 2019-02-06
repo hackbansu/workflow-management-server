@@ -24,4 +24,5 @@ python manage.py migrate
 python manage.py runserver
 ```
 **Server will start by default at [http://localhost:8000](http://localhost:8000)**
+- Swagger only show endpoint accessable to user only.
  

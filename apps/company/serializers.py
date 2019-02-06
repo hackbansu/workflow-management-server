@@ -1,28 +1,22 @@
 from __future__ import unicode_literals
 
-from django.contrib.admin.utils import lookup_field
 from django.contrib.auth import get_user_model
-from jinja2.nodes import args_as_const
 from rest_framework import serializers
-from rest_framework.serializers import LIST_SERIALIZER_KWARGS
 
-from apps.auth.serializers import InviteUserSerializer, UserAuthSerializer
-from apps.auth.views import common_constant
+from apps.auth.serializers import BaseUserSerializer, InviteUserSerializer, UserSerializer
 from apps.common import constant as common_constant
-from apps.company.models import Company, UserCompany
+from apps.company.models import Company, Link, UserCompany
 
 User = get_user_model()
 
 
 class LinkSerializer(serializers.ModelSerializer):
-    link_type_choices = serializers.SerializerMethodField()
-
-    def get_link_type(self):
-        return [{'display': key, 'value': value} for (key, value) in zip(common_constant.LINK_TYPE._fields, common_constant.LINK_TYPE)]
-
+    '''
+    Company link serializer.
+    '''
     class Meta:
-        model = Company
-        fields = fields = ('link_type_choices', 'link_type', 'url')
+        model = Link
+        fields = fields = ('link_type', 'url', 'company')
         extra_kwargs = {
             'link_type': {
                 'help_text': 'company link type'
@@ -30,12 +24,13 @@ class LinkSerializer(serializers.ModelSerializer):
             'url': {
                 'help_text': 'link url'
             }
-        }
+        },
+        depth = 1
 
 
 class CompanySerializer(serializers.ModelSerializer):
     '''
-    company.Company model serializer.
+    Company model serializer.
     '''
     status = serializers.SerializerMethodField()
 
@@ -86,136 +81,180 @@ class CompanySerializer(serializers.ModelSerializer):
         }
 
 
-class OldUserCompanySerializer(serializers.ModelSerializer):
+class UserCompanySerializer(serializers.ModelSerializer):
     '''
-    Company employee serializers.
+    Create company with existing user.
     '''
     company = CompanySerializer()
-    status = serializers.SerializerMethodField()
 
-    def get_status(self, obj):
-        return obj.get_status_display()
+    def get_user_instance(self, attr):
+        user = self.context.get('request').user
+        return user
 
-    def validate(self, attr):
-        user = self.context.get('user', None)
-        if user:
-            qs = UserCompany.objects.filter(
-                user=user,
-                status__in=[
-                    common_constant.USER_STATUS.ACTIVE,
-                    common_constant.USER_STATUS.INVITED
-                ]
-            )
-            if qs.exists():
-                raise serializers.ValidationError(
-                    {'detail': 'You are already part of a company'})
-        else:
-            raise serializers.ValidationError(
-                {'detail': 'User not in context'})
-        return attr
-
-    def create(self, validated_data):
-        user = validated_data.pop('user', None)
-        user = self.context.get('user') if user is None else user
-
-        company = validated_data.pop('company')
-
-        user = User.objects.create_user(**user)
-        company = Company.objects.create(**company)
-        instance = self.Meta.model.objects.create(
-            user=user, company=company, is_admin=True, **validated_data)
-
-        user.email_user(
-            message='''
-            Congratulations {user_name}
-            
-            Your company {company_name} is successfully created and pending for internal verification.
-            We will inform you once done.
-
-            Workflow Platform
-            ''',
-            **common_constant.NEW_COMPANY_EMAIL
-        )
-
-        return instance
-
-    class Meta:
-        model = UserCompany
-        fields = [
-            'company', 'is_admin',
-            'designation', 'join_at', 'status'
-        ]
-        extra_kwargs = {
-            'join_at': {
-                'read_only': True
-            },
-            'designation': {
-                'required': True
-            },
-            'is_admin': {
-                'read_only': True
-            }
-        }
-
-
-class UserCompanySerializer(OldUserCompanySerializer):
-    user = UserAuthSerializer()
-
-    def validate(self, attr):
-        return attr
-
-    def create(self, validated_data):
-        return super(UserCompanySerializer, self).create(validated_data)
-
-    class Meta(OldUserCompanySerializer.Meta):
-        fields = OldUserCompanySerializer.Meta.fields
-        fields += ['user']
-
-
-class InviteEmployeeSerializer(OldUserCompanySerializer):
-    user = InviteUserSerializer()
-    def validate(self, attr):
-
-        self.context.get('company')
-
-        qs = UserCompany.objects.filter(
-            user__email_iexact=attr.get('user').get('email'),
+    def get_user_company_qs(self, attr):
+        user = self.get_user_instance(attr)
+        return UserCompany.objects.filter(
+            user_id=user.id,
             status__in=[
                 common_constant.USER_STATUS.ACTIVE,
                 common_constant.USER_STATUS.INVITED
             ]
         )
-        if qs.exists():
-            if qs.first().status == common_constant.USER_STATUS.ACTIVE:
-                raise serializers.ValidationError(
-                    {'detail': 'User already active in company'}
-                )
-            elif qs.first().status == common_constant.USER_STATUS.INVITED:
-                raise serializers.ValidationError(
-                    {'detail': 'User already invited'}
-                )
+
+    def get_company_instance(self, attr):
+        company = Company.objects.create(**attr.pop('company'))
+        return company
+
+    def validate(self, validated_data):
+        qs = self.get_user_company_qs(validated_data)
+
+        if qs.filter(status=common_constant.USER_STATUS.ACTIVE).exists():
             raise serializers.ValidationError(
-                {'detail': 'Unexpected condition'}
-            )
-        return attr
+                {'detail': 'User already part of a company'})
+
+        if qs.filter(status=common_constant.USER_STATUS.INVITED).exists():
+            raise serializers.ValidationError(
+                {'detail': 'User already invited in a company'})
+        return validated_data
 
     def create(self, validated_data):
+        user = self.get_user_instance(validated_data)
+        company = self.get_company_instance(validated_data)
 
-        company = self.context.get('company')
-        user = validated_data.pop('user')
+        # just a safty precaution
+        validated_data.pop('company', None)
+        validated_data.pop('user', None)
 
-        user = User.objects.create_user(
-            password='DefaultPassword',
-            is_active=False,
-            **user
-        )
-
-        return UserCompany.objects.create(
+        instance = UserCompany.objects.create(
             user=user,
             company=company,
+            is_admin=True,
+            status=common_constant.USER_STATUS.ACTIVE,
             **validated_data
         )
+        user.company_create_mail(company.name)
+        return instance
 
-    class Meta(OldUserCompanySerializer.Meta):
-        fields = OldUserCompanySerializer.Meta.fields
-        fields += ['user']
+    class Meta:
+        model = UserCompany
+        fields = (
+            'company', 'is_admin',
+            'designation', 'status'
+        )
+        extra_kwargs = {
+
+            'designation': {
+                'required': True
+            },
+            'is_admin': {
+                'read_only': True
+            },
+            'status': {
+                'read_only': True
+            }
+        }
+
+
+class UserCompanySignupSerializer(UserCompanySerializer):
+    '''
+    User Company serializer for simultaneous signup.
+    '''
+    user = UserSerializer()
+
+    def get_user_instance(self, attr):
+        user_data = attr.pop('user')
+        return User.objects.create_user(**user_data)
+
+    def get_user_company_qs(self, attr):
+        return UserCompany.objects.filter(
+            user__email=attr['user']['email'],
+            status__in=[
+                common_constant.USER_STATUS.ACTIVE,
+                common_constant.USER_STATUS.INVITED
+            ]
+        )
+
+    class Meta(UserCompanySerializer.Meta):
+        fields = UserCompanySerializer.Meta.fields + ('user',)
+
+
+class InviteEmployeeSerializer(UserCompanySerializer):
+    '''
+    Invite employess to the company.
+    '''
+    user = InviteUserSerializer()
+
+    def get_user_company_qs(self, attr):
+        return UserCompany.objects.filter(
+            user__email=attr['user']['email'],
+            status__in=[
+                common_constant.USER_STATUS.ACTIVE,
+                common_constant.USER_STATUS.INVITED
+            ]
+        )
+
+    def get_company_instance(self, attr):
+        user = self.context.get('request').user
+        return Company.objects.get(
+            user_companies__user=user,
+            user_companies__status=common_constant.USER_STATUS.ACTIVE
+        )
+
+    def get_user_instance(self, attr):
+        user = attr['user']
+        try:
+            return User.objects.get(email=user['email'])
+        except User.DoesNotExist:
+            return User.objects.create_user(
+                password='DefaultPassword',
+                is_active=False,
+                **user
+            )
+
+    def create(self, validated_data):
+        user = self.get_user_instance(validated_data)
+        company = self.get_company_instance(validated_data)
+
+        # just a safty precaution
+        validated_data.pop('company', None)
+        validated_data.pop('user', None)
+
+        instance = UserCompany.objects.create(
+            user=user,
+            company=company,
+            is_admin=False,
+            status=common_constant.USER_STATUS.ACTIVE,
+            **validated_data
+        )
+        user.company_create_mail(company.name)
+        return instance
+
+    class Meta:
+        model = UserCompany
+        fields = (
+            'user', 'is_admin',
+            'designation', 'status'
+        )
+        extra_kwargs = {
+
+            'designation': {
+                'required': True
+            },
+            'is_admin': {
+                'read_only': True
+            },
+            'status': {
+                'read_only': True
+            }
+        }
+
+
+class EmployeeSerializer(serializers.ModelSerializer):
+    '''
+    Employee serializer to fetch company employees
+    '''
+    user = BaseUserSerializer()
+
+    class Meta:
+        model = UserCompany
+        fields = ['user', 'designation']

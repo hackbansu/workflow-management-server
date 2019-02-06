@@ -2,21 +2,18 @@
 # pylint:disable=W0221
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
-from datetime import datetime
+
 import uuid
-import pytz
 
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.models import UserManager as ParentUserManager
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.postgres.fields import CIEmailField
 from django.db import models
-from django.utils import timezone as tz
+from django.template.loader import render_to_string
+from django.utils import timezone
 
 from rest_framework.authtoken.models import Token
-
-from workflow_platform.settings.settings import TIME_ZONE
-from apps.common import constant as common_constant
 
 
 class UserManager(ParentUserManager):
@@ -103,24 +100,67 @@ class User(AbstractUser):
         '''
         return Token.objects.get_or_create(user=self)[0].key
 
-    def reset_password(self):
+    def get_web_token(self):
         '''
-        send reset password mail
+        return a token use for reset and invition of user.
         '''
-        token = '{token}--{uid}'.format(
+        return '{token}--{uid}'.format(
             token=default_token_generator.make_token(user=self),
             uid=self.id
         )
 
-        self.email_user(
-            message='password reset token is {token}'.format(token=token),
-            **common_constant.RESET_PASSWORD_EMAIL
+    def email_user(self, text_template, html_template, subject, context):
+        '''
+        email user
+        '''
+        html_message = render_to_string(html_template, context=context)
+        text_message = render_to_string(text_template, context=context)
+
+        super(User, self).email_user(
+            message=text_message,
+            html_message=html_message,
+            subject=subject
         )
-        print token
-        return token
+
+    def reset_password(self):
+        '''
+        send reset password mail
+        '''
+        context = {
+            'name': self.name,
+            'token': self.get_web_token()
+        }
+        print context['token']
+        self.email_user('reset-password.txt', 'reset-password.html',
+                        'reset password request', context)
+
+    def send_invite(self, company):
+        '''
+        send invitation mail.
+        '''
+        context = {
+            'name': self.name,
+            'token': self.get_web_token(),
+            'company': company
+        }
+        self.email_user('invite-user.txt', 'inivte-user.html',
+                        'Invitation to join', context)
+
+    def company_create_mail(self, company):
+        '''
+        company creation mail to user.
+        '''
+        context = {
+            'name': self.name,
+            company: company
+        }
+        self.email_user('company-create.txt', 'company-create.html',
+                        'Company Registration', context)
 
     def login_now(self):
-        current_tz = pytz.timezone(TIME_ZONE)
-        self.last_login = tz.make_aware(datetime.now(), current_tz)
+        '''
+        update login time of user.
+        '''
+        self.last_login = timezone.now()
         self.save()
         return self.token
