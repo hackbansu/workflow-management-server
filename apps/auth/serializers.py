@@ -76,19 +76,27 @@ class UpdateUserSerializer(BaseUserSerializer):
         return instance
 
     class Meta(BaseUserSerializer.Meta):
-        fields = BaseUserSerializer.Meta.fields + ('password',)
+        fields = BaseUserSerializer.Meta.fields + ('password','email','id')
         extra_kwargs = BaseUserSerializer.Meta.extra_kwargs.copy()
         extra_kwargs.update({
             'password': {
                 'write_only': True,
                 'help_text': 'Password for the account, required'
             },
+            'email': {
+                'help_text': 'Email field, need to be unique, will be trated as username, required',
+                'read_only':True
+            },
+            'id':{
+                'help_text': 'User unique id',
+                'read_only': True
+            }
         })
 
 
 class UserSerializer(UpdateUserSerializer):
     '''
-    Create new user. apart from UpdateUserSerializer password, id, token are added.
+    Create new user. apart from UpdateUserSerializer email, id, token are added.
     '''
 
     def validate_email(self, value):
@@ -110,11 +118,16 @@ class UserSerializer(UpdateUserSerializer):
         return User.objects.create_user(**validated_data)
 
     class Meta(UpdateUserSerializer.Meta):
-        fields = UpdateUserSerializer.Meta.fields + ('email', 'id', 'token')
+        fields = UpdateUserSerializer.Meta.fields + ('token',)
         extra_kwargs = UpdateUserSerializer.Meta.extra_kwargs.copy()
         extra_kwargs.update({
             'email': {
-                'help_text': 'Email field, need to be unique, will be trated as username, required'
+                'help_text': 'Email field, need to be unique, will be trated as username, required',
+                'read_only':False
+            },
+            'token':{
+                'help_text': 'User auth token',
+                'read_only': True
             }
         })
 
