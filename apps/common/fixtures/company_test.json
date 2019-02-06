@@ -1,7 +1,7 @@
 [
   {
     "model": "company.company",
-    "pk": 2,
+w    "pk": 2,
     "fields": {
       "created": "2019-02-01T07:42:22.024Z",
       "modified": "2019-02-01T07:42:22.024Z",

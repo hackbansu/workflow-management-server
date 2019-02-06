@@ -10,14 +10,13 @@ class Login(BaseTest):
     
     def test_login(self):
         url = reverse('user-login')
-        print url
         response = self.client.post(
             'url',
             {
                 'email': 'test@t.com',
                 'password': 'testpass'
             },
-            format= 'json'
+            format='json'
         )
         print response
         # self.assertTrue(False)

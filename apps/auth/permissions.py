@@ -21,6 +21,6 @@ class IsSelfOrCompanyAdmin(IsAuthenticated):
                 is_admin=True,
                 status=common_constant.USER_STATUS.ACTIVE
             )
+            return True
         except (Company.DoesNotExist, UserCompany.DoesNotExist):
-            return False
-        return request.user == obj
+            return request.user == obj

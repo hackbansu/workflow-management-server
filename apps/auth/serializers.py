@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password as django_password_validator
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
 from rest_framework.compat import authenticate
@@ -16,16 +17,12 @@ class BaseUserSerializer(serializers.ModelSerializer):
         model = User
         fields = ('first_name', 'last_name', 'profile_photo')
         extra_kwargs = {
-            'first_name': {
-                'help_text': 'User first name'
-            },
             'last_name': {
                 'help_text': 'User last name'
             },
-            'profile_photo': {
-                'help_text': 'User profile photo',
-                'required': False
-            },
+            'first_name': {
+                'required': True
+            }
         }
 
 
@@ -33,40 +30,31 @@ class InviteUserSerializer(serializers.Serializer):
     '''
     Invite user to company with this serializer.
     '''
-    email = serializers.EmailField()
-    first_name = serializers.CharField(max_length=254)
-    last_name = serializers.CharField(required=False, max_length=254)
-    profile_photo = serializers.ImageField(required=False)
-
-    class Meta:
-        extra_kwargs = {
-            'email': {
-                'help_text': 'Email field, need to be unique, will be trated as username, required'
-            },
-            'first_name': {
-                'help_text': 'User first name'
-            },
-            'last_name': {
-                'help_text': 'User last name'
-            },
-            'profile_photo': {
-                'help_text': 'User profile photo',
-                'required': False
-            },
-        }
+    email = serializers.EmailField(
+        required=True, help_text='Email field, need to be unique, will be trated as username')
+    first_name = serializers.CharField(
+        max_length=254, required=True, help_text='User first name')
+    last_name = serializers.CharField(
+        max_length=254, help_text='User last name')
+    profile_photo = serializers.ImageField(help_text='User profile photo')
 
 
 class UpdateUserSerializer(BaseUserSerializer):
     '''
-    Update details of existing user, email cannot be updated.
+    Update details of existing user, email cannot be updated. Also use for user retreival.
     '''
+
+    def validate_password(self, password):
+        django_password_validator(password=password, user=self.instance)
+        return password
 
     def update(self, instance, validated_data):
         '''
         Update user , override because of set_password.
         '''
         instance = super(UpdateUserSerializer, self).update(
-            instance, validated_data)
+            instance, validated_data
+        )
         password = validated_data.get('password', None)
 
         if password:
@@ -76,18 +64,14 @@ class UpdateUserSerializer(BaseUserSerializer):
         return instance
 
     class Meta(BaseUserSerializer.Meta):
-        fields = BaseUserSerializer.Meta.fields + ('password','email','id')
+        fields = BaseUserSerializer.Meta.fields + ('password', 'email', 'id')
         extra_kwargs = BaseUserSerializer.Meta.extra_kwargs.copy()
         extra_kwargs.update({
             'password': {
                 'write_only': True,
-                'help_text': 'Password for the account, required'
+                'help_text': 'Password for the account.'
             },
-            'email': {
-                'help_text': 'Email field, need to be unique, will be trated as username, required',
-                'read_only':True
-            },
-            'id':{
+            'id': {
                 'help_text': 'User unique id',
                 'read_only': True
             }
@@ -101,7 +85,7 @@ class UserSerializer(UpdateUserSerializer):
 
     def validate_email(self, value):
         '''
-        Validate user email, prevent email already registered error for updated same account..
+        Validate user email, prevent email already registered error for updated same account.
         '''
         qs = User.objects.filter(email=value)
         if self.instance:
@@ -122,10 +106,9 @@ class UserSerializer(UpdateUserSerializer):
         extra_kwargs = UpdateUserSerializer.Meta.extra_kwargs.copy()
         extra_kwargs.update({
             'email': {
-                'help_text': 'Email field, need to be unique, will be trated as username, required',
-                'read_only':False
+                'read_only': False
             },
-            'token':{
+            'token': {
                 'help_text': 'User auth token',
                 'read_only': True
             }
@@ -136,8 +119,8 @@ class AuthTokenSerializer(serializers.Serializer):
     '''
     AuthTokenSerializer is use to authenticate user credentials and log it in.
     '''
-    email = serializers.EmailField()
-    password = serializers.CharField()
+    email = serializers.EmailField(required=True)
+    password = serializers.CharField(required=True)
 
     def validate(self, attrs):
         '''
@@ -146,56 +129,42 @@ class AuthTokenSerializer(serializers.Serializer):
         email = attrs.get('email')
         password = attrs.get('password')
 
-        if email and password:
-            user = authenticate(
-                request=self.context.get('request'),
-                username=email,
-                password=password
-            )
-            # The authenticate call simply returns None for is_active=False
-            # users.
-            if not user:
-                msg = {'detail': 'Unable to log in with provided credentials.'}
-                raise serializers.ValidationError(msg, code='authorization')
-        else:
-            msg = {'detail': 'Must include "email" and "password".'}
+        user = authenticate(
+            request=self.context.get('request'),
+            username=email,
+            password=password
+        )
+        # The authenticate call simply returns None for is_active=False
+        # users.
+        if not user:
+            msg = {'detail': 'Unable to log in with provided credentials.'}
             raise serializers.ValidationError(msg, code='authorization')
+        attrs['user'] = user
         return attrs
 
     def create(self, validated_data):
         '''
         login user.
         '''
-        user = User.objects.get(email=validated_data['email'])
-        user.login_now()
-        return user
+        validated_data['user'].login_now()
+        return validated_data['user']
 
 
-class ResetTokenSerializer(serializers.Serializer):
+class ResetPasswordRequestSerializer(serializers.Serializer):
     '''
     Reset password request handled with this.
     '''
-    email = serializers.EmailField()
+    email = serializers.EmailField(required=True)
 
-    def validate(self, attrs):
+    def validate_email(self, email):
         '''
         verify incoming email.
         '''
-        email = attrs.get('email')
-        if email:
-            try:
-                user = User.objects.get(email=email)
-                attrs['user'] = user
-            except User.DoesNotExist:
-                pass
-        return attrs
-
-    def create(self, validated_data):
-        '''
-        Send reset password request
-        '''
-        validated_data['user'].reset_password()
-        return validated_data['user']
+        try:
+            User.objects.get(email=email)
+        except User.DoesNotExist:
+            pass
+        return email
 
 
 class ResetPasswordSerializer(serializers.ModelSerializer):
@@ -203,31 +172,25 @@ class ResetPasswordSerializer(serializers.ModelSerializer):
     User password reset and token is invalidated.
     '''
 
-    def create(self, validated_data):
+    def update(self, instance, validated_data):
         '''
         reset user password.
         '''
-        user = self.context['user']
-
-        user.set_password(validated_data['password'])
+        instance.set_password(validated_data['password'])
         # if invited user then the account will now be operational.
 
-        user.is_active = True
-        user.save()
+        instance.is_active = True
 
         # logout user of all devices.
         try:
-            Token.objects.get(user=user).delete()
+            instance.auth_token.delete()
         except Token.DoesNotExist:
             pass
 
         # update login time, also invalidate current token.
-        user.login_now()
+        instance.login_now()
 
-        return user
-
-    def update(self, instance, validated_data):
-        pass
+        return instance
 
     class Meta:
         model = User

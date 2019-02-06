@@ -76,9 +76,12 @@ class User(AbstractUser):
     providing basic details of for user.
     '''
     username = None
-    first_name = models.CharField(max_length=128)
-    email = CIEmailField(unique=True)
-    profile_photo = models.ImageField(upload_to=usr_profil_dir, blank=True)
+    first_name = models.CharField(
+        max_length=128, blank=False, help_text='User first name', null=False)
+    email = CIEmailField(
+        unique=True, help_text='Email field, need to be unique, will be trated as username')
+    profile_photo = models.ImageField(
+        upload_to=usr_profil_dir, blank=True, help_text='User profile photo')
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
 
@@ -130,7 +133,7 @@ class User(AbstractUser):
             'name': self.name,
             'token': self.get_web_token()
         }
-        print context['token']
+
         self.email_user('reset-password.txt', 'reset-password.html',
                         'reset password request', context)
 
