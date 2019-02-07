@@ -27,6 +27,8 @@ schema_view = get_swagger_view('workflow platform')
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^swagger/', schema_view),
-    url(r'^api/', include([url for url_patterns in [user_urls,
-                                                    company_urls] for url in url_patterns])),
+    url(r'^api/', include([url for url_patterns in [
+        user_urls,
+        company_urls
+    ] for url in url_patterns])),
 ]

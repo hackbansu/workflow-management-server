@@ -26,16 +26,19 @@ class Company(BaseModel):
     '''
     All registered companies.
     '''
-    name = CICharField(unique=True, max_length=256)
-    address = models.CharField(max_length=256)
-    city = models.CharField(max_length=128, blank=True)
-    state = models.CharField(max_length=128, blank=True)
+    name = CICharField(unique=True, max_length=254, help_text='company name')
+    address = models.CharField(max_length=254, help_text='company address')
+    city = models.CharField(max_length=128, blank=True,
+                            help_text='company city')
+    state = models.CharField(max_length=128, blank=True,
+                             help_text='company state')
     status = models.PositiveIntegerField(
         choices=(choice for choice in zip(
             common_constant.COMPANY_STATUS,
             common_constant.COMPANY_STATUS._fields
         )),
-        default=common_constant.COMPANY_STATUS.UNVERIFIED
+        default=common_constant.COMPANY_STATUS.UNVERIFIED,
+        help_text='company logo'
     )
     logo = models.ImageField(upload_to=company_logo_dir, blank=True)
 
@@ -57,9 +60,10 @@ class Link(BaseModel):
             common_constant.LINK_TYPE,
             common_constant.LINK_TYPE._fields
         )),
-        default=common_constant.LINK_TYPE.TWITTER
+        default=common_constant.LINK_TYPE.TWITTER,
+        help_text='company link type'
     )
-    url = models.URLField()
+    url = models.URLField(help_text='link url')
 
     class Meta:
         unique_together = ('company', 'link_type')

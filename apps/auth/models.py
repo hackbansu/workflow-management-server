@@ -13,7 +13,10 @@ from django.db import models
 from django.template.loader import render_to_string
 from django.utils import timezone
 
+from rest_framework.generics import get_object_or_404
 from rest_framework.authtoken.models import Token
+
+from apps.common import constant as common_constant
 
 
 class UserManager(ParentUserManager):
@@ -103,6 +106,22 @@ class User(AbstractUser):
         '''
         return Token.objects.get_or_create(user=self)[0].key
 
+    @property
+    def company(self):
+        '''
+        return company instance where user is active
+        '''
+        user_company = get_object_or_404(
+            self.user_companies, status=common_constant.USER_STATUS.ACTIVE)
+        return user_company.company
+
+    @property
+    def active_employee(self):
+        '''
+        return active employee record
+        '''
+        return get_object_or_404(self.user_companies, status=common_constant.USER_STATUS.ACTIVE)
+
     def get_web_token(self):
         '''
         return a token use for reset and invition of user.
@@ -136,6 +155,7 @@ class User(AbstractUser):
 
         self.email_user('reset-password.txt', 'reset-password.html',
                         'reset password request', context)
+        print context['token']
 
     def send_invite(self, company):
         '''
@@ -159,6 +179,17 @@ class User(AbstractUser):
         }
         self.email_user('company-create.txt', 'company-create.html',
                         'Company Registration', context)
+
+    def verification_mail(self):
+        '''
+        send verification mail for new user.
+        '''
+        context = {
+            'name': self.name,
+            'token': self.get_web_token(),
+        }
+        self.email_user('verify-user.txt', 'verify-user.html',
+                        'Verification Mail', context)
 
     def login_now(self):
         '''

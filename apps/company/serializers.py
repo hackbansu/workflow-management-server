@@ -1,9 +1,10 @@
 from __future__ import unicode_literals
 
 from django.contrib.auth import get_user_model
+
 from rest_framework import serializers
 
-from apps.auth.serializers import BaseUserSerializer, InviteUserSerializer, UserSerializer
+from apps.auth.serializers import CreateUserSerializer, InviteUserSerializer
 from apps.common import constant as common_constant
 from apps.company.models import Company, Link, UserCompany
 
@@ -16,16 +17,7 @@ class LinkSerializer(serializers.ModelSerializer):
     '''
     class Meta:
         model = Link
-        fields = fields = ('link_type', 'url', 'company')
-        extra_kwargs = {
-            'link_type': {
-                'help_text': 'company link type'
-            },
-            'url': {
-                'help_text': 'link url'
-            }
-        },
-        depth = 1
+        fields = ('link_type', 'url')
 
 
 class CompanySerializer(serializers.ModelSerializer):
@@ -33,11 +25,18 @@ class CompanySerializer(serializers.ModelSerializer):
     Company model serializer.
     '''
     status = serializers.SerializerMethodField()
+    links = LinkSerializer(many=True)
 
     def get_status(self, obj):
+        '''
+        return status equivalent.
+        '''
         return obj.get_status_display()
 
     def validate_name(self, value):
+        '''
+        validate for company name.
+        '''
         qs = Company.objects.filter(name__iexact=value)
         if self.instance:
             qs = qs.exclude(pk=self.instance)
@@ -48,6 +47,37 @@ class CompanySerializer(serializers.ModelSerializer):
                 }
             )
         return value
+
+    def create(self, validated_data):
+        '''
+        update due to nested write.
+        '''
+        links_data = validated_data.pop('links', None)
+        company = super(CompanySerializer, self).create(self, validated_data)
+        if links_data:
+            for link in links_data:
+                Link.objects.create(company=company, **link)
+        return company
+
+    def update(self, instance, validated_data):
+        '''
+        override due to nested write.
+        '''
+        links_data = validated_data.pop('links', None)
+
+        if links_data:
+            for link in links_data:
+                try:
+                    link_instance = Link.objects.get(
+                        company=instance,
+                        link_type=link['link_type'],
+                    )
+                    link_instance.url = link['url']
+                    link_instance.save()
+                except Link.DoesNotExist:
+                    Link.objects.create(company=instance, **link)
+
+        return super(CompanySerializer, self).update(instance, validated_data)
 
     class Meta:
         model = Company
@@ -60,20 +90,11 @@ class CompanySerializer(serializers.ModelSerializer):
                 'read_only': True,
                 'help_text': 'unique company id'
             },
+            'status': {
+                'read_only': True
+            },
             'name': {
-                'help_text': 'company name'
-            },
-            'address': {
-                'help_text': 'company address'
-            },
-            'city': {
-                'help_text': 'company city'
-            },
-            'state': {
-                'help_text': 'company state'
-            },
-            'logo': {
-                'help_text': 'company logo'
+                'read_only': True
             },
             'links': {
                 'required': False
@@ -88,6 +109,9 @@ class UserCompanySerializer(serializers.ModelSerializer):
     company = CompanySerializer()
 
     def get_user_instance(self, attr):
+        '''
+        return user instance, can be override to adapt to get user from diffent. 
+        '''
         user = self.context.get('request').user
         return user
 
@@ -129,7 +153,7 @@ class UserCompanySerializer(serializers.ModelSerializer):
             user=user,
             company=company,
             is_admin=True,
-            status=common_constant.USER_STATUS.ACTIVE,
+            status=common_constant.USER_STATUS.INVITED,
             **validated_data
         )
         user.company_create_mail(company.name)
@@ -159,11 +183,17 @@ class UserCompanySignupSerializer(UserCompanySerializer):
     '''
     User Company serializer for simultaneous signup.
     '''
-    user = UserSerializer()
+    user = CreateUserSerializer()
 
     def get_user_instance(self, attr):
         user_data = attr.pop('user')
-        return User.objects.create_user(**user_data)
+        user = User.objects.create_user(
+            is_active=False,
+            password='DefaultPassword',
+            **user_data
+        )
+        user.verification_mail()
+        return user
 
     def get_user_company_qs(self, attr):
         return UserCompany.objects.filter(
@@ -253,8 +283,41 @@ class EmployeeSerializer(serializers.ModelSerializer):
     '''
     Employee serializer to fetch company employees
     '''
-    user = BaseUserSerializer()
+    user = CreateUserSerializer()
 
     class Meta:
         model = UserCompany
-        fields = ['user', 'designation']
+        fields = ['user', 'designation', 'is_admin', 'status']
+
+
+class EmployeeCompanySerializer(serializers.ModelSerializer):
+    '''
+    Employee company and company related details. 
+    '''
+    company = CompanySerializer()
+
+    def update(self, instance, validated_data):
+        '''
+        override for nested updates
+        '''
+        company_data = validated_data.pop('company', None)
+        if company_data:
+            company_serializer = CompanySerializer(
+                data=company_data,
+                instance=instance.company
+            )
+            company_serializer.is_valid(raise_exception=True)
+            company_serializer.save()
+        return super(EmployeeCompanySerializer, self).update(instance, validated_data)
+
+    class Meta:
+        model = UserCompany
+        fields = ('company', 'designation', 'is_admin', 'status', 'id')
+        extra_kwargs = {
+            'id': {
+                'read_only': True
+            },
+            'status': {
+                'read_only': True
+            }
+        }

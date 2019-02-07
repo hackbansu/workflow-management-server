@@ -39,6 +39,17 @@ class InviteUserSerializer(serializers.Serializer):
     profile_photo = serializers.ImageField(help_text='User profile photo')
 
 
+class CreateUserSerializer(BaseUserSerializer):
+    class Meta(BaseUserSerializer.Meta):
+        fields = BaseUserSerializer.Meta.fields + ('email', 'id')
+        extra_kwargs = BaseUserSerializer.Meta.extra_kwargs.copy()
+        extra_kwargs = {
+            'id': {
+                'read_only': True
+            }
+        }
+
+
 class UpdateUserSerializer(BaseUserSerializer):
     '''
     Update details of existing user, email cannot be updated. Also use for user retreival.
@@ -78,7 +89,7 @@ class UpdateUserSerializer(BaseUserSerializer):
         })
 
 
-class UserSerializer(UpdateUserSerializer):
+class LoginUserSerializer(UpdateUserSerializer):
     '''
     Create new user. apart from UpdateUserSerializer email, id, token are added.
     '''

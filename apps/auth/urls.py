@@ -1,16 +1,16 @@
 from django.conf.urls import url
 from rest_framework import routers
 
-from apps.auth.views import UserView, ResetPasswordView, InvitationView
+from apps.auth.views import UserAuthView, ResetPasswordView, InvitationView, ProfileView
 
 router = routers.SimpleRouter()
-router.register('user', UserView)
-
+router.register('user', UserAuthView)
 urlpatterns = router.urls
 
 urlpatterns += [
-    url('^user/reset-password/(?P<token>\w+-\w+--\d+)/$',
+    url(r'^user/profile/', ProfileView.as_view(), name='user-profile'),
+    url(r'^user/reset-password/(?P<token>\w+-\w+--\d+)/$',
         ResetPasswordView.as_view(), name='reset-password'),
-    url('^user/invitation/(?P<token>\w+-\w+--\d+)/$',
-        InvitationView, name='user-invitation')
+    url(r'^user/invitation/(?P<token>\w+-\w+--\d+)/$',
+        InvitationView.as_view(), name='user-invitation'),
 ]

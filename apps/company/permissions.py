@@ -8,6 +8,7 @@ class IsInactiveEmployee(IsAuthenticated):
     '''
     Check if employe is inactive.
     '''
+
     def has_permission(self, request, view):
         res = super(IsInactiveEmployee, self).has_permission(request, view)
         res = res and not UserCompany.objects.filter(
@@ -20,29 +21,23 @@ class IsInactiveEmployee(IsAuthenticated):
 
         return res
 
+
 class IsActiveCompanyEmployee(IsAuthenticated):
     '''
     Check if employee is active.
     '''
+
     def has_permission(self, request, view):
-        res = super(IsActiveCompanyEmployee, self).has_permission(request, view)
-        res = res and UserCompany.objects.filter(
-            user=request.user,
-            status=common_constant.USER_STATUS.ACTIVE,
-            company__status=common_constant.COMPANY_STATUS.ACTIVE
-        ).exists()
-        return res
+        res = super(IsActiveCompanyEmployee,
+                    self).has_permission(request, view)
+        return res and request.user.company.status == common_constant.COMPANY_STATUS.ACTIVE
+
 
 class IsActiveCompanyAdmin(IsAuthenticated):
     '''
     Check if user is company admin.
     '''
-    def has_permission(self, request, view):
-        res = super(IsActiveCompanyAdmin, self).has_permission(request, view)
-        res = res and UserCompany.objects.filter(
-            user=request.user,
-            status=common_constant.USER_STATUS.ACTIVE,
-            is_admin=True,
-            company__status=common_constant.COMPANY_STATUS.ACTIVE
-        ).exists()
-        return res
+
+    def has_object_permission(self, request, view, obj):
+        employee_record = request.user.active_employee
+        return employee_record.company == obj.company and employee_record.is_admin
