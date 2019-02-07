@@ -4,6 +4,7 @@
 from __future__ import unicode_literals
 
 import uuid
+import logging
 
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.models import UserManager as ParentUserManager
@@ -18,6 +19,7 @@ from rest_framework.authtoken.models import Token
 
 from apps.common import constant as common_constant
 
+logger = logging.getLogger(__name__)
 
 class UserManager(ParentUserManager):
     '''
@@ -153,9 +155,10 @@ class User(AbstractUser):
             'token': self.get_web_token()
         }
 
+        logger.debug('reset token {token}'.format(token=context['token']) )
+
         self.email_user('reset-password.txt', 'reset-password.html',
                         'reset password request', context)
-        print context['token']
 
     def send_invite(self, company):
         '''
