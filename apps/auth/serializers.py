@@ -2,9 +2,12 @@ from __future__ import unicode_literals
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password as django_password_validator
+
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
 from rest_framework.compat import authenticate
+
+from apps.common import constant as common_constant
 
 User = get_user_model()
 
@@ -43,9 +46,11 @@ class CreateUserSerializer(BaseUserSerializer):
     '''
     Serializer use to create new user, used with the user company signup.
     '''
+
     def validate_email(self, value):
         if self.instance:
-            raise serializers.ValidationError({'detail': 'email cannot be updated'})
+            raise serializers.ValidationError(
+                {'detail': 'email cannot be updated'})
         return value
 
     class Meta(BaseUserSerializer.Meta):
@@ -186,7 +191,7 @@ class ResetPasswordRequestSerializer(serializers.Serializer):
         return email
 
 
-class ResetPasswordSerializer(serializers.ModelSerializer):
+class ResetPasswordSerializer(UpdateUserSerializer):
     '''
     User password reset and token is invalidated.
     '''
@@ -211,11 +216,30 @@ class ResetPasswordSerializer(serializers.ModelSerializer):
 
         return instance
 
-    class Meta:
-        model = User
+    class Meta(UpdateUserSerializer.Meta):
         fields = ['password']
         extra_kwargs = {
             'password': {
                 'write_only': True
             }
         }
+
+
+class InvitationSerializer(ResetPasswordSerializer):
+    '''
+    Serializer to accept invitaion of user
+    '''
+    def update(self, instance, validated_data):
+        '''
+        Override to activate employee account.
+        '''
+        instance = super(InvitationSerializer, self).update(
+            instance, validated_data)
+        user_company = instance.user_companies.filter(
+            status=common_constant.USER_STATUS.INVITED
+        )
+        if user_company.exists():
+            user_company = user_company.first()
+            user_company.status = common_constant.USER_STATUS.ACTIVE
+            user_company.save()
+        return instance

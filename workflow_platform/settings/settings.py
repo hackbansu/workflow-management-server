@@ -174,7 +174,7 @@ logging.config.dictConfig({
         # root logger
         '': {
             'level': 'WARNING',
-            'handlers': ['file'],
+            'handlers': ['console', 'file'],
         },
         'apps': {
             'level': 'DEBUG',

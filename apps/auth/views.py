@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 from django.contrib.auth import get_user_model
+
 from rest_framework import response, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -67,10 +68,10 @@ class ResetPasswordView(APIView):
         handle reset token request.
     '''
 
-    permission_classes = [IsNotAuthenticated]
-    authentication_classes = []
-
     def get(self, request, token):
+        '''
+        Verify token for the first time
+        '''
         try:
             token, _ = filter_token(token)
         except ValidationError as e:
@@ -79,6 +80,9 @@ class ResetPasswordView(APIView):
         return response.Response(status=status.HTTP_204_NO_CONTENT)
 
     def post(self, request, token):
+        '''
+        Reset password of user and activate it.
+        '''
         token, user = filter_token(token)
         serilizer = auth_serializer.ResetPasswordSerializer(
             data=request.data,
@@ -94,20 +98,25 @@ class ResetPasswordView(APIView):
         return response.Response(serilizer.data, status=status.HTTP_200_OK)
 
 
-class InvitationView(APIView):
+class InvitationView(ResetPasswordView):
     '''
-    User accept invitaion.
+    Accept Invitation in company and reset password. 
     '''
-    authentication_classes = []
 
-    def get(self, request, token):
-        try:
-            token, user = filter_token(token)
-        except ValidationError as e:
-            return response.Response(e, status=status.HTTP_404_NOT_FOUND)
-        user.is_active = True
-        user.save()
-        return response.Response(status=status.HTTP_204_NO_CONTENT)
+    def post(self, request, token):
+        token, user = filter_token(token)
+        serilizer = auth_serializer.InvitationSerializer(
+            data=request.data,
+            instance=user,
+            context={
+                'request': request,
+            }
+        )
+
+        serilizer.is_valid(raise_exception=True)
+        serilizer.save()
+
+        return response.Response(serilizer.data, status=status.HTTP_200_OK)
 
 
 class ProfileView(APIView):
