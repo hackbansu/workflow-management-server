@@ -13,10 +13,13 @@ from rest_framework.viewsets import GenericViewSet
 from apps.common import constant as common_constant
 from apps.company import permissions as company_permissions
 from apps.company import serializers as company_serializer
-from apps.company.models import UserCompany
-from apps.company.permissions import (IsActiveCompanyAdmin,
-                                      IsActiveCompanyEmployee,
-                                      IsInactiveEmployee)
+from apps.company.models import UserCompany, Company
+from apps.company.permissions import (
+    IsActiveCompanyAdmin,
+    IsActiveCompanyEmployee,
+    IsInactiveEmployee,
+    IsCompanyAdmin
+)
 
 User = get_user_model()
 
@@ -26,6 +29,15 @@ class CompanyBaseClassView(GenericViewSet):
     Base class for company views view 
     '''
     queryset = UserCompany.objects.all()
+
+
+class UpdateCompanyView(UpdateModelMixin, GenericViewSet):
+    '''
+    Update Company details.
+    '''
+    queryset = Company.objects.all()
+    permission_classes = [IsCompanyAdmin]
+    serializer_class = company_serializer.CompanySerializer
 
 
 class CreateCompanyUserView(CreateModelMixin, CompanyBaseClassView):
@@ -60,8 +72,10 @@ class EmployeeCompanyView(UpdateModelMixin, CompanyBaseClassView):
     '''
     my_company:
         Return company of employee
+    partial_update:
+        update employee details
     '''
-    serializer_class = company_serializer.EmployeeCompanySerializer
+    serializer_class = company_serializer.EmployeeSerializer
     permission_classes = [IsActiveCompanyAdmin]
 
     @action(detail=False, url_path='my-company', permission_classes=[IsActiveCompanyEmployee])
@@ -70,11 +84,12 @@ class EmployeeCompanyView(UpdateModelMixin, CompanyBaseClassView):
         employee's company detail
         '''
         instance = self.get_queryset().get(user=request.user, company=request.user.company)
-        serializer = self.get_serializer(instance=instance)
+        serializer = company_serializer.EmployeeCompanySerializer(
+            instance=instance)
         return response.Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class EmployeesView(CompanyBaseClassView):
+class EmployeesView(GenericViewSet):
     '''
     employees:
         return employees of cumpany, filter on th basis of status and admin is possible.
@@ -84,6 +99,7 @@ class EmployeesView(CompanyBaseClassView):
     permission_classes = [company_permissions.IsActiveCompanyEmployee]
     filter_backends = (filters.DjangoFilterBackend,)
     filter_fields = ('status', 'is_admin')
+    queryset = UserCompany.objects.all()
 
     def get_queryset(self):
         return self.queryset.filter(
@@ -94,7 +110,7 @@ class EmployeesView(CompanyBaseClassView):
             ]
         )
 
-    @action(detail=False)
+    @action(detail=False, methods=['get'], )
     def employees(self, request):
         '''
         list all employees of company.

@@ -40,6 +40,14 @@ class InviteUserSerializer(serializers.Serializer):
 
 
 class CreateUserSerializer(BaseUserSerializer):
+    '''
+    Serializer use to create new user, used with the user company signup.
+    '''
+    def validate_email(self, value):
+        if self.instance:
+            raise serializers.ValidationError({'detail': 'email cannot be updated'})
+        return value
+
     class Meta(BaseUserSerializer.Meta):
         fields = BaseUserSerializer.Meta.fields + ('email', 'id')
         extra_kwargs = BaseUserSerializer.Meta.extra_kwargs.copy()
@@ -137,8 +145,8 @@ class AuthTokenSerializer(serializers.Serializer):
         '''
         Validate credentials.
         '''
-        email = attrs('email')
-        password = attrs('password')
+        email = attrs['email']
+        password = attrs['password']
 
         user = authenticate(
             request=self.context.get('request'),

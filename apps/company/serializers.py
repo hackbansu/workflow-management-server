@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 from django.contrib.auth import get_user_model
-
+from django.core.exceptions import FieldDoesNotExist
 from rest_framework import serializers
 
 from apps.auth.serializers import CreateUserSerializer, InviteUserSerializer
@@ -43,7 +43,7 @@ class CompanySerializer(serializers.ModelSerializer):
         if qs.exists():
             raise serializers.ValidationError(
                 {
-                    'detail': 'This company name is already taken'
+                    'detail': 'This company name is already taken.'
                 }
             )
         return value
@@ -285,9 +285,30 @@ class EmployeeSerializer(serializers.ModelSerializer):
     '''
     user = CreateUserSerializer()
 
+    def update(self, instance, validated_data):
+        '''
+        override because of nested write
+        '''
+        user_data = validated_data.pop('user', None)
+        if user_data:
+            # just a precaution
+            user_data.pop('email', None)
+            user = instance.user
+            for attr, value in user_data.items():
+                try:
+                    user._meta.get_field(attr)
+                    setattr(user, attr, value)
+                except FieldDoesNotExist:
+                    pass
+            user.save()
+
+        return super(EmployeeSerializer, self).update(instance, validated_data)
+
     class Meta:
         model = UserCompany
-        fields = ['user', 'designation', 'is_admin', 'status']
+        fields = ['user', 'designation', 'is_admin', 'status', 'id']
+    
+        
 
 
 class EmployeeCompanySerializer(serializers.ModelSerializer):
