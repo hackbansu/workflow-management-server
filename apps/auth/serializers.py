@@ -137,8 +137,8 @@ class AuthTokenSerializer(serializers.Serializer):
         '''
         Validate credentials.
         '''
-        email = attrs.get('email')
-        password = attrs.get('password')
+        email = attrs('email')
+        password = attrs('password')
 
         user = authenticate(
             request=self.context.get('request'),

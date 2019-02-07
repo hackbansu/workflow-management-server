@@ -18,5 +18,3 @@ class Login(BaseTest):
             },
             format='json'
         )
-        print response
-        # self.assertTrue(False)

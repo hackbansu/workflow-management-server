@@ -25,14 +25,3 @@ COMPANY_STATUS = namedtuple(
     'UNVERIFIED ACTIVE INACTIVE'
 )._make([1, 2, 3])
 
-SYSTEM_EMAIL = 'workflow.platform@jtg'
-
-RESET_PASSWORD_EMAIL = {
-    'subject': '[do not reply] Password Reset Request',
-    'from_email': SYSTEM_EMAIL
-}
-
-NEW_COMPANY_EMAIL = {
-    'subject': '[do not reply] New Company Request',
-    'from_email': SYSTEM_EMAIL
-}
