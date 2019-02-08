@@ -8,9 +8,9 @@ router.register('user', UserAuthView)
 urlpatterns = router.urls
 
 urlpatterns += [
-    url(r'^user/profile/', ProfileView.as_view(), name='user-profile'),
+    url(r'^user/profile/', ProfileView.as_view(), name='user_profile'),
     url(r'^user/reset-password/(?P<token>\w+-\w+--\d+)/$',
         ResetPasswordView.as_view(), name='reset-password'),
     url(r'^user/invitation/(?P<token>\w+-\w+--\d+)/$',
-        InvitationView.as_view(), name='user-invitation'),
+        InvitationView.as_view(), name='user_invitation'),
 ]

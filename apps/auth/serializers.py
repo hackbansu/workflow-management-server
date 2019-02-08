@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+import logging
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password as django_password_validator
@@ -10,6 +11,8 @@ from rest_framework.compat import authenticate
 from apps.common import constant as common_constant
 
 User = get_user_model()
+
+logger = logging.getLogger(__name__)
 
 
 class BaseUserSerializer(serializers.ModelSerializer):
@@ -23,9 +26,6 @@ class BaseUserSerializer(serializers.ModelSerializer):
             'last_name': {
                 'help_text': 'User last name'
             },
-            'first_name': {
-                'required': True
-            }
         }
 
 
@@ -39,20 +39,14 @@ class InviteUserSerializer(serializers.Serializer):
         max_length=254, required=True, help_text='User first name')
     last_name = serializers.CharField(
         max_length=254, help_text='User last name')
-    profile_photo = serializers.ImageField(help_text='User profile photo')
+    profile_photo = serializers.ImageField(
+        help_text='User profile photo', required=False)
 
 
 class CreateUserSerializer(BaseUserSerializer):
     '''
     Serializer use to create new user, used with the user company signup.
     '''
-
-    def validate_email(self, value):
-        if self.instance:
-            raise serializers.ValidationError(
-                {'detail': 'email cannot be updated'})
-        return value
-
     class Meta(BaseUserSerializer.Meta):
         fields = BaseUserSerializer.Meta.fields + ('email', 'id')
         extra_kwargs = BaseUserSerializer.Meta.extra_kwargs.copy()
@@ -67,44 +61,23 @@ class UpdateUserSerializer(BaseUserSerializer):
     '''
     Update details of existing user, email cannot be updated. Also use for user retreival.
     '''
-
-    def validate_password(self, password):
-        django_password_validator(password=password, user=self.instance)
-        return password
-
-    def update(self, instance, validated_data):
-        '''
-        Update user , override because of set_password.
-        '''
-        instance = super(UpdateUserSerializer, self).update(
-            instance, validated_data
-        )
-        password = validated_data.get('password', None)
-
-        if password:
-            instance.set_password(password)
-
-        instance.save()
-        return instance
-
     class Meta(BaseUserSerializer.Meta):
-        fields = BaseUserSerializer.Meta.fields + ('password', 'email', 'id')
+        fields = BaseUserSerializer.Meta.fields + ('email', 'id')
         extra_kwargs = BaseUserSerializer.Meta.extra_kwargs.copy()
         extra_kwargs.update({
-            'password': {
-                'write_only': True,
-                'help_text': 'Password for the account.'
-            },
             'id': {
                 'help_text': 'User unique id',
+                'read_only': True
+            },
+            'email': {
                 'read_only': True
             }
         })
 
 
-class LoginUserSerializer(UpdateUserSerializer):
+class UserDetailSerializer(UpdateUserSerializer):
     '''
-    Create new user. apart from UpdateUserSerializer email, id, token are added.
+    User Details email, id, token are extended.
     '''
 
     def validate_email(self, value):
@@ -185,9 +158,10 @@ class ResetPasswordRequestSerializer(serializers.Serializer):
         verify incoming email.
         '''
         try:
-            User.objects.get(email=email)
+            self.instance = User.objects.get(email__iexact=email)
+            logger.debug('reset request for %s' % (self.instance))
         except User.DoesNotExist:
-            pass
+            self.instance = None
         return email
 
 
@@ -196,10 +170,16 @@ class ResetPasswordSerializer(UpdateUserSerializer):
     User password reset and token is invalidated.
     '''
 
+    def validate_password(self, password):
+        if self.instance:
+            django_password_validator(password=password, user=self.instance)
+        return password
+
     def update(self, instance, validated_data):
         '''
         reset user password.
         '''
+
         instance.set_password(validated_data['password'])
         # if invited user then the account will now be operational.
 
@@ -229,17 +209,19 @@ class InvitationSerializer(ResetPasswordSerializer):
     '''
     Serializer to accept invitaion of user
     '''
+
     def update(self, instance, validated_data):
         '''
         Override to activate employee account.
         '''
-        instance = super(InvitationSerializer, self).update(
-            instance, validated_data)
-        user_company = instance.user_companies.filter(
+        user_company = self.context['user_company']
+        user_company.status = common_constant.USER_STATUS.ACTIVE
+        user_company.save()
+
+        qs = self.instance.user_companies.all(
             status=common_constant.USER_STATUS.INVITED
         )
-        if user_company.exists():
-            user_company = user_company.first()
-            user_company.status = common_constant.USER_STATUS.ACTIVE
-            user_company.save()
-        return instance
+        if qs.exists():
+            qs.delete()
+
+        return super(InvitationSerializer, self).update(instance, validated_data)

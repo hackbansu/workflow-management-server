@@ -13,10 +13,7 @@ class IsInactiveEmployee(IsAuthenticated):
         res = super(IsInactiveEmployee, self).has_permission(request, view)
         res = res and not UserCompany.objects.filter(
             user=request.user,
-            status__in=[
-                common_constant.USER_STATUS.ACTIVE,
-                common_constant.USER_STATUS.INVITED
-            ]
+            status=common_constant.USER_STATUS.ACTIVE,
         ).exists()
 
         return res
@@ -24,7 +21,7 @@ class IsInactiveEmployee(IsAuthenticated):
 
 class IsActiveCompanyEmployee(IsAuthenticated):
     '''
-    Check if employee is active.
+    Check if employee's company is active.
     '''
 
     def has_permission(self, request, view):

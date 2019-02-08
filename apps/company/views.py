@@ -3,11 +3,10 @@ from __future__ import unicode_literals
 
 from django.contrib.auth import get_user_model
 from django_filters import rest_framework as filters
+
 from rest_framework import response, status
-from rest_framework.decorators import action, permission_classes
-from rest_framework.generics import get_object_or_404
+from rest_framework.decorators import action
 from rest_framework.mixins import CreateModelMixin, UpdateModelMixin
-from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet
 
 from apps.common import constant as common_constant
@@ -92,7 +91,7 @@ class EmployeeCompanyView(UpdateModelMixin, CompanyBaseClassView):
 class EmployeesView(GenericViewSet):
     '''
     employees:
-        return employees of cumpany, filter on th basis of status and admin is possible.
+        return employees of company, can be filtered on the basis of status and admin is possible.
     '''
 
     serializer_class = company_serializer.EmployeeSerializer

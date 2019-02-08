@@ -2,9 +2,10 @@ from __future__ import unicode_literals
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import FieldDoesNotExist
+from django.db.models import Q
 from rest_framework import serializers
 
-from apps.auth.serializers import CreateUserSerializer, InviteUserSerializer
+from apps.auth.serializers import UpdateUserSerializer, CreateUserSerializer, InviteUserSerializer
 from apps.common import constant as common_constant
 from apps.company.models import Company, Link, UserCompany
 
@@ -25,7 +26,7 @@ class CompanySerializer(serializers.ModelSerializer):
     Company model serializer.
     '''
     status = serializers.SerializerMethodField()
-    links = LinkSerializer(many=True)
+    links = LinkSerializer(many=True, required=False)
 
     def get_status(self, obj):
         '''
@@ -77,6 +78,9 @@ class CompanySerializer(serializers.ModelSerializer):
                 except Link.DoesNotExist:
                     Link.objects.create(company=instance, **link)
 
+        # just a precaution
+        validated_data.pop('name', None)
+
         return super(CompanySerializer, self).update(instance, validated_data)
 
     class Meta:
@@ -93,12 +97,7 @@ class CompanySerializer(serializers.ModelSerializer):
             'status': {
                 'read_only': True
             },
-            'name': {
-                'read_only': True
-            },
-            'links': {
-                'required': False
-            }
+
         }
 
 
@@ -110,7 +109,7 @@ class UserCompanySerializer(serializers.ModelSerializer):
 
     def get_user_instance(self, attr):
         '''
-        return user instance, can be override to adapt to get user from diffent. 
+        return user instance, can be override to adapt to get user from diffrent.
         '''
         user = self.context.get('request').user
         return user
@@ -118,11 +117,11 @@ class UserCompanySerializer(serializers.ModelSerializer):
     def get_user_company_qs(self, attr):
         user = self.get_user_instance(attr)
         return UserCompany.objects.filter(
-            user_id=user.id,
-            status__in=[
-                common_constant.USER_STATUS.ACTIVE,
-                common_constant.USER_STATUS.INVITED
-            ]
+            Q(user=user.id) &
+            (
+                Q(status=common_constant.USER_STATUS.ACTIVE) |
+                Q(is_admin=True)
+            )
         )
 
     def get_company_instance(self, attr):
@@ -132,19 +131,14 @@ class UserCompanySerializer(serializers.ModelSerializer):
     def validate(self, validated_data):
         qs = self.get_user_company_qs(validated_data)
 
-        if qs.filter(status=common_constant.USER_STATUS.ACTIVE).exists():
+        if qs.exists():
             raise serializers.ValidationError(
                 {'detail': 'User already part of a company'})
-
-        if qs.filter(status=common_constant.USER_STATUS.INVITED).exists():
-            raise serializers.ValidationError(
-                {'detail': 'User already invited in a company'})
         return validated_data
 
     def create(self, validated_data):
         user = self.get_user_instance(validated_data)
         company = self.get_company_instance(validated_data)
-
         # just a safty precaution
         validated_data.pop('company', None)
         validated_data.pop('user', None)
@@ -156,7 +150,8 @@ class UserCompanySerializer(serializers.ModelSerializer):
             status=common_constant.USER_STATUS.INVITED,
             **validated_data
         )
-        user.company_create_mail(company.name)
+        company.create_mail()
+        instance.send_invite()
         return instance
 
     class Meta:
@@ -197,11 +192,11 @@ class UserCompanySignupSerializer(UserCompanySerializer):
 
     def get_user_company_qs(self, attr):
         return UserCompany.objects.filter(
-            user__email=attr['user']['email'],
-            status__in=[
-                common_constant.USER_STATUS.ACTIVE,
-                common_constant.USER_STATUS.INVITED
-            ]
+            Q(user__email=attr['user']['email']) &
+            (
+                Q(status=common_constant.USER_STATUS.ACTIVE) |
+                Q(is_admin=True)
+            )
         )
 
     class Meta(UserCompanySerializer.Meta):
@@ -215,20 +210,22 @@ class InviteEmployeeSerializer(UserCompanySerializer):
     user = InviteUserSerializer()
 
     def get_user_company_qs(self, attr):
+        company = self.get_company_instance(attr)
         return UserCompany.objects.filter(
-            user__email=attr['user']['email'],
-            status__in=[
-                common_constant.USER_STATUS.ACTIVE,
-                common_constant.USER_STATUS.INVITED
-            ]
+            Q(user__email=attr['user']['email'],) &
+            (
+                Q(status=common_constant.USER_STATUS.ACTIVE) |
+                Q(is_admin=True) |
+                Q(company=company)
+            )
         )
 
     def get_company_instance(self, attr):
+        if hasattr(self, 'company'):
+            return self.company
         user = self.context.get('request').user
-        return Company.objects.get(
-            user_companies__user=user,
-            user_companies__status=common_constant.USER_STATUS.ACTIVE
-        )
+        self.company = user.company
+        return self.company
 
     def get_user_instance(self, attr):
         user = attr['user']
@@ -252,11 +249,10 @@ class InviteEmployeeSerializer(UserCompanySerializer):
         instance = UserCompany.objects.create(
             user=user,
             company=company,
-            is_admin=False,
-            status=common_constant.USER_STATUS.ACTIVE,
+            status=common_constant.USER_STATUS.INVITED,
             **validated_data
         )
-        user.company_create_mail(company.name)
+        instance.send_invite()
         return instance
 
     class Meta:
@@ -283,7 +279,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
     '''
     Employee serializer to fetch company employees
     '''
-    user = CreateUserSerializer()
+    user = UpdateUserSerializer()
 
     def update(self, instance, validated_data):
         '''
@@ -307,13 +303,11 @@ class EmployeeSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserCompany
         fields = ['user', 'designation', 'is_admin', 'status', 'id']
-    
-        
 
 
 class EmployeeCompanySerializer(serializers.ModelSerializer):
     '''
-    Employee company and company related details. 
+    Employee's company and company related details. 
     '''
     company = CompanySerializer()
 

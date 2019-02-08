@@ -21,6 +21,7 @@ from apps.common import constant as common_constant
 
 logger = logging.getLogger(__name__)
 
+
 class UserManager(ParentUserManager):
     '''
     UserManger is the extension of inbuilt UserManager of Abstract User.
@@ -82,11 +83,20 @@ class User(AbstractUser):
     '''
     username = None
     first_name = models.CharField(
-        max_length=128, blank=False, help_text='User first name', null=False)
+        max_length=128,
+        blank=False,
+        help_text='User first name',
+        null=False
+    )
     email = CIEmailField(
-        unique=True, help_text='Email field, need to be unique, will be trated as username')
+        unique=True,
+        help_text='Email field, need to be unique, will be trated as username'
+    )
     profile_photo = models.ImageField(
-        upload_to=usr_profil_dir, blank=True, help_text='User profile photo')
+        upload_to=usr_profil_dir,
+        blank=True,
+        help_text='User profile photo'
+    )
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
 
@@ -155,33 +165,14 @@ class User(AbstractUser):
             'token': self.get_web_token()
         }
 
-        logger.debug('reset token {token}'.format(token=context['token']) )
+        logger.debug('reset token %s' % (context['token']))
 
-        self.email_user('reset-password.txt', 'reset-password.html',
-                        'reset password request', context)
-
-    def send_invite(self, company):
-        '''
-        send invitation mail.
-        '''
-        context = {
-            'name': self.name,
-            'token': self.get_web_token(),
-            'company': company
-        }
-        self.email_user('invite-user.txt', 'inivte-user.html',
-                        'Invitation to join', context)
-
-    def company_create_mail(self, company):
-        '''
-        company creation mail to user.
-        '''
-        context = {
-            'name': self.name,
-            company: company
-        }
-        self.email_user('company-create.txt', 'company-create.html',
-                        'Company Registration', context)
+        self.email_user(
+            'reset-password.txt',
+            'reset-password.html',
+            'reset password request',
+            context
+        )
 
     def verification_mail(self):
         '''
@@ -191,8 +182,13 @@ class User(AbstractUser):
             'name': self.name,
             'token': self.get_web_token(),
         }
-        self.email_user('verify-user.txt', 'verify-user.html',
-                        'Verification Mail', context)
+        self.email_user(
+            'verify-user.txt',
+            'verify-user.html',
+            'Verification Mail',
+            context
+        )
+        logger.info('Verification mail send to %s' % (self.email))
 
     def login_now(self):
         '''
