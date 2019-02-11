@@ -193,3 +193,109 @@ AttributeError: 'Company' object has no attribute 'company_create_mail'
 2019-02-08 12:08:02,461 apps.auth.models DEBUG    reset token 53o-69aabe2313d5cf9b448f--37
 2019-02-08 12:08:27,168 apps.auth.serializers DEBUG    reset request for pawan.bansal@joshtechnology.com
 2019-02-08 12:08:27,168 apps.auth.models DEBUG    reset token 53o-69aabe2313d5cf9b448f--37
+2019-02-11 08:00:50,872 django.request WARNING  Not Found: /favicon.ico
+2019-02-11 09:05:18,707 django.request WARNING  Not Found: /api/
+2019-02-11 09:05:21,823 django.request WARNING  Not Found: /
+2019-02-11 09:08:22,239 apps.auth.serializers DEBUG    reset request for bansal.pawan96@gmail.com
+2019-02-11 09:08:22,240 apps.auth.models DEBUG    reset token 53r-abc32decc4d54627c150--2
+2019-02-11 09:11:45,531 django.request ERROR    Internal Server Error: /api/user/reset-password/53r-abc32decc4d54627c150--2
+Traceback (most recent call last):
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/django/core/handlers/exception.py", line 41, in inner
+    response = get_response(request)
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/django/utils/deprecation.py", line 138, in __call__
+    response = self.process_request(request)
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/django/middleware/common.py", line 63, in process_request
+    path = self.get_full_path_with_slash(request)
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/django/middleware/common.py", line 101, in get_full_path_with_slash
+    'url': request.get_host() + new_path,
+RuntimeError: You called this URL via POST, but the URL doesn't end in a slash and you have APPEND_SLASH set. Django can't redirect to the slash URL while maintaining POST data. Change your form to point to localhost:8000/api/user/reset-password/53r-abc32decc4d54627c150--2/ (note the trailing slash), or set APPEND_SLASH=False in your Django settings.
+2019-02-11 09:14:05,726 django.request WARNING  Not Found: /api/employee/my-company/
+2019-02-11 09:32:16,761 apps.auth.serializers DEBUG    reset request for akhileshrao19@gmail.com
+2019-02-11 09:32:16,761 apps.auth.models DEBUG    reset token 53r-44f5dea5830c5e0bfd41--3
+2019-02-11 09:50:38,652 django.request WARNING  Not Found: /api//update-company/undefined/
+2019-02-11 09:51:19,199 django.request WARNING  Not Found: /api/update-company/undefined/
+2019-02-11 10:34:09,513 apps.auth.serializers DEBUG    reset request for bansal.pawan96@gmail.com
+2019-02-11 10:34:09,513 apps.auth.models DEBUG    reset token 53r-5b5d86b3a9dc5c190ef5--2
+2019-02-11 12:34:08,988 django.request WARNING  Not Found: /profile/5dc680f8-9120-48ee-8fa9-8e7cdc13efd3-profile_pawan.png
+2019-02-11 12:34:28,560 django.request WARNING  Not Found: /user/profile/5dc680f8-9120-48ee-8fa9-8e7cdc13efd3-profile_pawan.png
+2019-02-11 12:41:23,190 django.request ERROR    Internal Server Error: /api/user/login/
+Traceback (most recent call last):
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/django/core/handlers/exception.py", line 41, in inner
+    response = get_response(request)
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/django/core/handlers/base.py", line 187, in _get_response
+    response = self.process_exception_by_middleware(e, request)
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/django/core/handlers/base.py", line 185, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/django/views/decorators/csrf.py", line 58, in wrapped_view
+    return view_func(*args, **kwargs)
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/rest_framework/viewsets.py", line 103, in view
+    return self.dispatch(request, *args, **kwargs)
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/rest_framework/views.py", line 483, in dispatch
+    response = self.handle_exception(exc)
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/rest_framework/views.py", line 443, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/rest_framework/views.py", line 480, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/home/ubuntu16-jtg/myWork/office/rampup project/work-flow-api/apps/auth/views.py", line 45, in login
+    print(serializer.data.profile_photo.url)
+AttributeError: 'ReturnDict' object has no attribute 'profile_photo'
+2019-02-11 12:41:41,872 django.request ERROR    Internal Server Error: /api/user/login/
+Traceback (most recent call last):
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/django/core/handlers/exception.py", line 41, in inner
+    response = get_response(request)
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/django/core/handlers/base.py", line 187, in _get_response
+    response = self.process_exception_by_middleware(e, request)
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/django/core/handlers/base.py", line 185, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/django/views/decorators/csrf.py", line 58, in wrapped_view
+    return view_func(*args, **kwargs)
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/rest_framework/viewsets.py", line 103, in view
+    return self.dispatch(request, *args, **kwargs)
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/rest_framework/views.py", line 483, in dispatch
+    response = self.handle_exception(exc)
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/rest_framework/views.py", line 443, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/rest_framework/views.py", line 480, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/home/ubuntu16-jtg/myWork/office/rampup project/work-flow-api/apps/auth/views.py", line 45, in login
+    print(serializer.data.profile_photo)
+AttributeError: 'ReturnDict' object has no attribute 'profile_photo'
+2019-02-11 12:42:29,411 django.request ERROR    Internal Server Error: /api/user/login/
+Traceback (most recent call last):
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/django/core/handlers/exception.py", line 41, in inner
+    response = get_response(request)
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/django/core/handlers/base.py", line 187, in _get_response
+    response = self.process_exception_by_middleware(e, request)
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/django/core/handlers/base.py", line 185, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/django/views/decorators/csrf.py", line 58, in wrapped_view
+    return view_func(*args, **kwargs)
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/rest_framework/viewsets.py", line 103, in view
+    return self.dispatch(request, *args, **kwargs)
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/rest_framework/views.py", line 483, in dispatch
+    response = self.handle_exception(exc)
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/rest_framework/views.py", line 443, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/home/ubuntu16-jtg/Envs/env_rampup/local/lib/python2.7/site-packages/rest_framework/views.py", line 480, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/home/ubuntu16-jtg/myWork/office/rampup project/work-flow-api/apps/auth/views.py", line 45, in login
+    print(serializer.data['profile_photo'].url)
+AttributeError: 'str' object has no attribute 'url'
+2019-02-11 12:44:17,601 django.request WARNING  Not Found: /profile/5dc680f8-9120-48ee-8fa9-8e7cdc13efd3-profile_pawan.png
+2019-02-11 12:46:38,362 django.request WARNING  Not Found: /
+2019-02-11 12:46:49,528 django.request WARNING  Not Found: /static
+2019-02-11 12:47:14,641 django.request WARNING  Not Found: /
+2019-02-11 12:47:18,062 django.request WARNING  Not Found: /user/profile/5dc680f8-9120-48ee-8fa9-8e7cdc13efd3-profile_pawan.png
+2019-02-11 12:49:52,406 django.request WARNING  Not Found: /user/profile/5dc680f8-9120-48ee-8fa9-8e7cdc13efd3-profile_pawan.png
+2019-02-11 12:50:52,633 django.request WARNING  Not Found: /profile/5dc680f8-9120-48ee-8fa9-8e7cdc13efd3-profile_pawan.png
+2019-02-11 14:04:56,343 django.request WARNING  Not Found: /http://localhost:8000/user/profile/8ccb6439-e6f4-4ed6-a1aa-7ac748929465-profile_pawan.png
+2019-02-11 14:05:18,846 django.request WARNING  Not Found: /http://localhost:8000/user/profile/8ccb6439-e6f4-4ed6-a1aa-7ac748929465-profile_pawan.png
+2019-02-11 14:05:23,211 django.request WARNING  Not Found: /http://localhost:8000/user/profile/8ccb6439-e6f4-4ed6-a1aa-7ac748929465-profile_pawan.png
+2019-02-11 14:06:21,651 django.request WARNING  Not Found: /http://localhost:8000/user/profile/8ccb6439-e6f4-4ed6-a1aa-7ac748929465-profile_pawan.png
+2019-02-11 14:06:21,754 django.request WARNING  Not Found: /http://localhost:8000/http://localhost:8000/user/profile/8ccb6439-e6f4-4ed6-a1aa-7ac748929465-profile_pawan.png
+2019-02-11 14:06:32,980 django.request WARNING  Not Found: /http://localhost:8000/user/profile/8ccb6439-e6f4-4ed6-a1aa-7ac748929465-profile_pawan.png
+2019-02-11 14:06:51,863 django.request WARNING  Not Found: /http://localhost:8000/user/profile/8ccb6439-e6f4-4ed6-a1aa-7ac748929465-profile_pawan.png
+2019-02-11 14:07:03,560 django.request WARNING  Not Found: /http://localhost:8000/user/profile/8ccb6439-e6f4-4ed6-a1aa-7ac748929465-profile_pawan.png
+2019-02-11 14:07:03,695 django.request WARNING  Not Found: /http://localhost:8000/http://localhost:8000/user/profile/8ccb6439-e6f4-4ed6-a1aa-7ac748929465-profile_pawan.png
+2019-02-11 14:07:07,793 django.request WARNING  Not Found: /http://localhost:8000/user/profile/8ccb6439-e6f4-4ed6-a1aa-7ac748929465-profile_pawan.png
+2019-02-11 14:07:13,953 django.request WARNING  Not Found: /http://localhost:8000/user/profile/8ccb6439-e6f4-4ed6-a1aa-7ac748929465-profile_pawan.png
