@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 import uuid
 import logging
 
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.models import UserManager as ParentUserManager
 from django.contrib.auth.tokens import default_token_generator
@@ -71,7 +72,7 @@ def usr_profil_dir(_, filename):
     '''
     return profile photo save path
     '''
-    return 'user/profile/{uuid}-{filename}'.format(
+    return settings.MEDIA_ROOT + 'user/profile/{uuid}-{filename}'.format(
         uuid=uuid.uuid4(),
         filename=filename)
 
