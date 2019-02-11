@@ -4,13 +4,22 @@
 from __future__ import unicode_literals
 
 import uuid
+import logging
 
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.models import UserManager as ParentUserManager
+from django.contrib.auth.tokens import default_token_generator
 from django.contrib.postgres.fields import CIEmailField
 from django.db import models
+from django.template.loader import render_to_string
+from django.utils import timezone
 
+from rest_framework.generics import get_object_or_404
 from rest_framework.authtoken.models import Token
+
+from apps.common import constant as common_constant
+
+logger = logging.getLogger(__name__)
 
 
 class UserManager(ParentUserManager):
@@ -73,9 +82,21 @@ class User(AbstractUser):
     providing basic details of for user.
     '''
     username = None
-    first_name = models.CharField(max_length=128)
-    email = CIEmailField(unique=True)
-    profile_photo = models.ImageField(upload_to=usr_profil_dir)
+    first_name = models.CharField(
+        max_length=128,
+        blank=False,
+        help_text='User first name',
+        null=False
+    )
+    email = CIEmailField(
+        unique=True,
+        help_text='Email field, need to be unique, will be trated as username'
+    )
+    profile_photo = models.ImageField(
+        upload_to=usr_profil_dir,
+        blank=True,
+        help_text='User profile photo'
+    )
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
 
@@ -96,3 +117,83 @@ class User(AbstractUser):
         user auth token.
         '''
         return Token.objects.get_or_create(user=self)[0].key
+
+    @property
+    def company(self):
+        '''
+        return company instance where user is active
+        '''
+        user_company = get_object_or_404(
+            self.user_companies, status=common_constant.USER_STATUS.ACTIVE)
+        return user_company.company
+
+    @property
+    def active_employee(self):
+        '''
+        return active employee record
+        '''
+        return get_object_or_404(self.user_companies, status=common_constant.USER_STATUS.ACTIVE)
+
+    def get_web_token(self):
+        '''
+        return a token use for reset and invition of user.
+        '''
+        return '{token}--{uid}'.format(
+            token=default_token_generator.make_token(user=self),
+            uid=self.id
+        )
+
+    def email_user(self, text_template, html_template, subject, context):
+        '''
+        email user
+        '''
+        html_message = render_to_string(html_template, context=context)
+        text_message = render_to_string(text_template, context=context)
+
+        super(User, self).email_user(
+            message=text_message,
+            html_message=html_message,
+            subject=subject
+        )
+
+    def reset_password(self):
+        '''
+        send reset password mail
+        '''
+        context = {
+            'name': self.name,
+            'token': self.get_web_token()
+        }
+
+        logger.debug('reset token %s' % (context['token']))
+
+        self.email_user(
+            'reset-password.txt',
+            'reset-password.html',
+            'reset password request',
+            context
+        )
+
+    def verification_mail(self):
+        '''
+        send verification mail for new user.
+        '''
+        context = {
+            'name': self.name,
+            'token': self.get_web_token(),
+        }
+        self.email_user(
+            'verify-user.txt',
+            'verify-user.html',
+            'Verification Mail',
+            context
+        )
+        logger.info('Verification mail send to %s' % (self.email))
+
+    def login_now(self):
+        '''
+        update login time of user.
+        '''
+        self.last_login = timezone.now()
+        self.save()
+        return self.token

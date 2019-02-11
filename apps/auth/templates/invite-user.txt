@@ -1,0 +1,3 @@
+Hi {{ name }}
+    You are invited to join {{ company }}. Your invitation token is http://localhost:3000/invitation/{{ token }}.
+    

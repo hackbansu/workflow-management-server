@@ -64,7 +64,7 @@ class Task(models.Model):
         choices=(choice for choice in zip(
             common_constant.TASK_STATUS,
             common_constant.TASK_STATUS._fields
-            )),
+        )),
         default=common_constant.TASK_STATUS.UPCOMMING
     )
 
@@ -85,7 +85,7 @@ class WorkflowAccess(models.Model):
         choices=(choice for choice in zip(
             common_constant.PERMISSION,
             common_constant.PERMISSION._fields
-            )),
+        )),
         default=common_constant.PERMISSION.READ
     )
 

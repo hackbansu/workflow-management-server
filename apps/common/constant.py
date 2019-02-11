@@ -24,3 +24,4 @@ COMPANY_STATUS = namedtuple(
     'COMPANY_STATUS',
     'UNVERIFIED ACTIVE INACTIVE'
 )._make([1, 2, 3])
+

@@ -1,0 +1,3 @@
+Hi {{ name }}
+    Your account is successfully created. Use the token http://localhost:3000/invitation/{{ token }} to verify your account.
+    

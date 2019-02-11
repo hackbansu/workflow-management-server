@@ -4,3 +4,7 @@ django-partial-index==0.5.2
 django-rest-swagger==2.2.0
 djangorestframework==3.8.0
 psycopg2-binary==2.7.7
+django-cors-headers==2.4.0
+Pillow==5.4.1
+django-filter==1.1.0
+django-debug-panel==0.8.3

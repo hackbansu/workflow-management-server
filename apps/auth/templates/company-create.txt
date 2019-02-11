@@ -1,0 +1,3 @@
+Hi {{ name }}
+    Your comapny {{ company }} is successfully registered with our system and pending for internal verification. 
+    We will inform you once its done.
