@@ -15,6 +15,8 @@ Including another URLconf
 """
 from django.conf.urls import url, include
 from django.contrib import admin
+from django.conf import settings
+from django.conf.urls.static import static
 
 from rest_framework_swagger.views import get_swagger_view
 
@@ -32,3 +34,6 @@ urlpatterns = [
         company_urls
     ] for url in url_patterns])),
 ]
+
+urlpatterns += static(settings.MEDIA_URL,
+                      document_root=settings.MEDIA_ROOT)
