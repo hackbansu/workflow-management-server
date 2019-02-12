@@ -4,7 +4,7 @@ from rest_framework import routers
 from apps.auth.views import UserAuthView, ResetPasswordView, InvitationView, ProfileView
 
 router = routers.SimpleRouter()
-router.register('user', UserAuthView)
+router.register('auth', UserAuthView)
 urlpatterns = router.urls
 
 urlpatterns += [

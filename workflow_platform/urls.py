@@ -20,7 +20,7 @@ from django.conf.urls.static import static
 
 from rest_framework_swagger.views import get_swagger_view
 
-from apps.auth.urls import urlpatterns as user_urls
+from apps.auth.urls import urlpatterns as auth_urls
 from apps.company.urls import urlpatterns as company_urls
 
 
@@ -28,9 +28,9 @@ schema_view = get_swagger_view('workflow platform')
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-    url(r'^swagger/', schema_view),
+    url(r'^api/docs/', schema_view),
     url(r'^api/', include([url for url_patterns in [
-        user_urls,
+        auth_urls,
         company_urls
     ] for url in url_patterns])),
 ]
