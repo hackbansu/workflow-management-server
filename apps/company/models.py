@@ -143,7 +143,7 @@ class UserCompany(BaseModel):
         )
     
     def get_invite_token(self):
-        token = invite_token_generator.make(self.user, self)
+        token = invite_token_generator.make_token(self.user, self)
         return '%s--%s--%s' % (token, self.user, self)
 
     def send_invite(self):
