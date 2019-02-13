@@ -225,7 +225,7 @@ class InvitationSerializer(ResetPasswordSerializer):
         user_company.status = common_constant.USER_STATUS.ACTIVE
         user_company.save()
 
-        qs = self.instance.user_companies.all(
+        qs = self.instance.user_companies.filter(
             status=common_constant.USER_STATUS.INVITED
         )
         if qs.exists():
