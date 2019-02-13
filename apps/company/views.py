@@ -125,7 +125,7 @@ class InviteEmployeeView(GenericViewSet):
     Invite User to the company with this view.
     '''
     serializer_class = company_serializer.InviteEmployeeSerializer
-    permission_classes = [company_permissions.IsActiveCompanyEmployee]
+    permission_classes = [company_permissions.IsActiveCompanyEmployee, company_permissions.IsCompanyAdmin]
     queryset = UserCompany.objects.all()
 
     @action(detail=False, methods=['post'], url_path='invite-employee',)

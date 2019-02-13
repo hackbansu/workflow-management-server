@@ -27,7 +27,7 @@ class CompanySerializer(serializers.ModelSerializer):
     '''
     status = serializers.SerializerMethodField()
     links = LinkSerializer(many=True, required=False)
-    logo_url = serializers.URLField(source='logo');
+    logo_url = serializers.URLField(source='logo', read_only=True);
 
     def get_status(self, obj):
         '''

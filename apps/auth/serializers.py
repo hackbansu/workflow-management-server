@@ -20,7 +20,7 @@ class BaseUserSerializer(serializers.ModelSerializer):
     Base user serializer, purpose to give only basic detail of user.
     '''
 
-    profile_photo_url = serializers.URLField(source='profile_photo');
+    profile_photo_url = serializers.URLField(source='profile_photo', read_only=True);
 
     class Meta:
         model = User
