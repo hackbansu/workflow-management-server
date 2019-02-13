@@ -27,6 +27,7 @@ class CompanySerializer(serializers.ModelSerializer):
     '''
     status = serializers.SerializerMethodField()
     links = LinkSerializer(many=True, required=False)
+    logo_url = serializers.URLField(source='logo');
 
     def get_status(self, obj):
         '''
@@ -87,12 +88,16 @@ class CompanySerializer(serializers.ModelSerializer):
         model = Company
         fields = (
             'id', 'name', 'address', 'city',
-            'state', 'logo', 'status', 'links'
+            'state', 'logo','logo_url', 'status', 'links'
         )
         extra_kwargs = {
             'id': {
                 'read_only': True,
                 'help_text': 'unique company id'
+            },
+            'logo': {
+                'write_only': True,
+                'help_text': 'company logo'
             },
             'status': {
                 'read_only': True

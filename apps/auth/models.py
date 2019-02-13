@@ -72,7 +72,7 @@ def usr_profil_dir(_, filename):
     '''
     return profile photo save path
     '''
-    return settings.MEDIA_ROOT + 'user/profile/{uuid}-{filename}'.format(
+    return 'user/profile/{uuid}-{filename}'.format(
         uuid=uuid.uuid4(),
         filename=filename)
 
