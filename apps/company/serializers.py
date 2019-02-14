@@ -27,7 +27,7 @@ class CompanySerializer(serializers.ModelSerializer):
     '''
     status = serializers.SerializerMethodField()
     links = LinkSerializer(many=True, required=False)
-    logo_url = serializers.URLField(source='logo', read_only=True);
+    logo_url = serializers.URLField(source='logo', read_only=True)
 
     def get_status(self, obj):
         '''
@@ -88,7 +88,7 @@ class CompanySerializer(serializers.ModelSerializer):
         model = Company
         fields = (
             'id', 'name', 'address', 'city',
-            'state', 'logo','logo_url', 'status', 'links'
+            'state', 'logo', 'logo_url', 'status', 'links'
         )
         extra_kwargs = {
             'id': {
@@ -217,12 +217,8 @@ class InviteEmployeeSerializer(UserCompanySerializer):
     def get_user_company_qs(self, attr):
         company = self.get_company_instance(attr)
         return UserCompany.objects.filter(
-            Q(user__email=attr['user']['email'],) &
-            (
-                Q(status=common_constant.USER_STATUS.ACTIVE) |
-                Q(is_admin=True) |
-                Q(company=company)
-            )
+            Q(user__email=attr['user']['email'],) & 
+            Q(status=common_constant.USER_STATUS.ACTIVE)
         )
 
     def get_company_instance(self, attr):
