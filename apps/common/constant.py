@@ -24,4 +24,8 @@ COMPANY_STATUS = namedtuple(
     'COMPANY_STATUS',
     'UNVERIFIED ACTIVE INACTIVE'
 )._make([1, 2, 3])
+CSV_STATUS = namedtuple(
+    'CSV_STATUS',
+    'PENDING INPROGRESS PROCESSED ERROR'
+)._make([1, 2, 3, 4])
 

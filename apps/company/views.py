@@ -145,9 +145,12 @@ class InviteEmployeeView(GenericViewSet):
     @action(detail=False, methods=['post'], url_path='invite-employee-csv',)
     def invite_employee_csv(self, request):
         '''
-        invite employee
+        parse employees data from csv file and invite them
         '''
-        data = parse_invite_csv(request.data.get('data_file'))
+        data = parse_invite_csv(request.data.get('csv_file'))
+        if data is None:
+            return response.Response({}, status=status.HTTP_400_BAD_REQUEST)
+
         serializer = self.get_serializer(data=data, many=True)
 
         serializer.is_valid(raise_exception=True)

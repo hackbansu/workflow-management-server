@@ -27,6 +27,15 @@ def company_logo_dir(_, filename):
         filename=filename
     )
 
+def company_invite_csv_dir(_, filename):
+    '''
+    company invite csv dir.
+    '''
+    return 'company/csv/{uuid}_{filename}'.format(
+        uuid=uuid.uuid4(),
+        filename=filename
+    )
+
 
 class Company(BaseModel):
     '''
@@ -162,3 +171,27 @@ class UserCompany(BaseModel):
             context
         )
         logger.info('Invite mail send to {email}'.format(email=self.user.email))
+
+class UserCompanyCsv(BaseModel):
+    '''
+    CSV invite files uploaded by admins of the companies.
+    '''
+    user_company = models.ForeignKey(
+        to=UserCompany,
+        on_delete=models.CASCADE,
+        related_name='csvs'
+    )
+    csv_file = models.FileField(upload_to=company_invite_csv_dir, blank=False)
+    status = models.PositiveIntegerField(
+        choices=(choice for choice in zip(
+            common_constant.CSV_STATUS,
+            common_constant.CSV_STATUS._fields
+        )),
+        default=common_constant.CSV_STATUS.PENDING
+    )
+
+    def __unicode__(self):
+        return '{user_company}-#-{status}'.format(
+            user_company=self.user_company_id,
+            status=self.get_status_display()
+        )
