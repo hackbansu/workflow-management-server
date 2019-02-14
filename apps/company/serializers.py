@@ -4,10 +4,12 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import FieldDoesNotExist
 from django.db.models import Q
 from rest_framework import serializers
+from rest_framework.generics import get_object_or_404
 
 from apps.auth.serializers import UpdateUserSerializer, CreateUserSerializer, InviteUserSerializer
 from apps.common import constant as common_constant
-from apps.company.models import Company, Link, UserCompany
+from apps.company.models import Company, Link, UserCompany, UserCompanyCsv
+
 
 User = get_user_model()
 
@@ -166,7 +168,6 @@ class UserCompanySerializer(serializers.ModelSerializer):
             'designation', 'status'
         )
         extra_kwargs = {
-
             'designation': {
                 'required': True
             },
@@ -178,6 +179,39 @@ class UserCompanySerializer(serializers.ModelSerializer):
             }
         }
 
+class UserCompanyCsvSerializer(serializers.ModelSerializer):
+    '''
+    Company link serializer.
+    '''
+
+    def get_user_company_instance(self, attr):
+        '''
+        return user instance, can be override to adapt to get user from diffrent.
+        '''
+        user = self.context.get('request').user
+        user_company = get_object_or_404(
+            user.user_companies, status=common_constant.USER_STATUS.ACTIVE)
+        return user_company
+
+    def create(self, validated_data):
+        user_company = self.get_user_company_instance(validated_data)
+        # just a safty precaution
+        validated_data.pop('user_company', None)
+
+        instance = UserCompanyCsv.objects.create(
+            user_company=user_company,
+            **validated_data
+        )
+        return instance
+        
+    class Meta:
+        model = UserCompanyCsv
+        fields = ('csv_file', 'status')
+        extra_kwargs = {
+            'status': {
+                'read_only': True
+            }
+        }
 
 class UserCompanySignupSerializer(UserCompanySerializer):
     '''
@@ -253,6 +287,7 @@ class InviteEmployeeSerializer(UserCompanySerializer):
             status=common_constant.USER_STATUS.INVITED,
             **validated_data
         )
+
         instance.send_invite()
         return instance
 
