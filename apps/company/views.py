@@ -21,6 +21,7 @@ from apps.company.permissions import (
 )
 from apps.common.helper import parse_invite_csv
 
+
 User = get_user_model()
 
 

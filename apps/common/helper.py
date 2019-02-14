@@ -128,13 +128,16 @@ def parse_invite_csv(file):
     data = []
     reader = csv.DictReader(file, delimiter=',')
     for row in reader:
-        data.append({
-            'user': {
-                'email': row['email'],
-                'first_name': row['first name'],
-                'last_name': row['last name']
-            },
-            'designation': row['designation']
-        })
+        try:
+            data.append({
+                'user': {
+                    'email': row['email'],
+                    'first_name': row['first name'],
+                    'last_name': row['last name']
+                },
+                'designation': row['designation']
+            })
+        except:
+            return None
 
     return data

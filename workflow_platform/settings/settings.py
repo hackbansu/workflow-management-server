@@ -186,6 +186,7 @@ logging.config.dictConfig({
     },
 })
 
+CELERY_BROKER_URL = 'amqp://zpxpoxft:X548-5obGw_3Fv0oiYD456s2xro8u0iq@mustang.rmq.cloudamqp.com/zpxpoxft'
 
 try:
     from workflow_platform.settings.settings_local import *
