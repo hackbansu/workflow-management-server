@@ -19,6 +19,7 @@ from apps.company.permissions import (
     IsInactiveEmployee,
     IsCompanyAdmin
 )
+from apps.common.helper import parse_invite_csv
 
 User = get_user_model()
 
@@ -125,7 +126,8 @@ class InviteEmployeeView(GenericViewSet):
     Invite User to the company with this view.
     '''
     serializer_class = company_serializer.InviteEmployeeSerializer
-    permission_classes = [company_permissions.IsActiveCompanyEmployee, company_permissions.IsCompanyAdmin]
+    permission_classes = [
+        company_permissions.IsActiveCompanyEmployee, company_permissions.IsCompanyAdmin]
     queryset = UserCompany.objects.all()
 
     @action(detail=False, methods=['post'], url_path='invite-employee',)
@@ -134,6 +136,18 @@ class InviteEmployeeView(GenericViewSet):
         invite employee
         '''
         serializer = self.get_serializer(data=request.data)
+
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return response.Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='invite-employee-csv',)
+    def invite_employee_csv(self, request):
+        '''
+        invite employee
+        '''
+        data = parse_invite_csv(request.data.get('data_file'))
+        serializer = self.get_serializer(data=data, many=True)
 
         serializer.is_valid(raise_exception=True)
         serializer.save()

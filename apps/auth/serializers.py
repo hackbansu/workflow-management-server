@@ -31,7 +31,7 @@ class BaseUserSerializer(serializers.ModelSerializer):
             },
             'profile_photo': {
                 'write_only': True,
-                'help_text': 'User last name'
+                'help_text': 'User profile photo'
             },
         }
 
