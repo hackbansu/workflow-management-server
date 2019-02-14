@@ -19,7 +19,7 @@ from apps.company.permissions import (
     IsInactiveEmployee,
     IsCompanyAdmin
 )
-from apps.common.helper import parse_invite_csv
+from apps.company.tasks import invite_via_csv
 
 
 User = get_user_model()
@@ -154,6 +154,6 @@ class InviteEmployeeView(GenericViewSet):
 
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
-        print(instance.id)
+        invite_via_csv.delay(instance.id)
 
-        return response.Response({}, status=status.HTTP_200_OK)
+        return response.Response(serializer.data, status=status.HTTP_200_OK)

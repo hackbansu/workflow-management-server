@@ -184,6 +184,14 @@ class UserCompanyCsvSerializer(serializers.ModelSerializer):
     Company link serializer.
     '''
 
+    status = serializers.SerializerMethodField()
+
+    def get_status(self, obj):
+        '''
+        return status equivalent.
+        '''
+        return obj.get_status_display()
+    
     def get_user_company_instance(self, attr):
         '''
         return user instance, can be override to adapt to get user from diffrent.
@@ -210,6 +218,9 @@ class UserCompanyCsvSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'status': {
                 'read_only': True
+            },
+            'csv_file':{
+                'write_only': True
             }
         }
 
@@ -258,7 +269,10 @@ class InviteEmployeeSerializer(UserCompanySerializer):
     def get_company_instance(self, attr):
         if hasattr(self, 'company'):
             return self.company
-        user = self.context.get('request').user
+        try:
+            user = self.context.get('request').user
+        except:
+            user = self.context.get('request')['user']
         self.company = user.company
         return self.company
 
