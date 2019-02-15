@@ -295,11 +295,11 @@ class InviteEmployeeSerializer(UserCompanySerializer):
         validated_data.pop('company', None)
         validated_data.pop('user', None)
 
-        instance = UserCompany.objects.create(
+        instance, _ = UserCompany.objects.get_or_create(
             user=user,
             company=company,
             status=common_constant.USER_STATUS.INVITED,
-            **validated_data
+            defaults=dict(**validated_data)
         )
 
         instance.send_invite()
