@@ -1,3 +1,5 @@
+from django.conf.urls import url
+
 from rest_framework import routers
 
 from apps.company import views as company_views
@@ -12,3 +14,8 @@ router.register('company', company_views.CreateCompanyView)
 router.register('employee', company_views.EmployeeCompanyView)
 
 urlpatterns = router.urls
+
+urlpatterns += [
+    url(r'^employee/invitation/(?P<token>\w+-\w+--\d+--\d+)/$',
+        company_views.InvitationView.as_view(), name='employee_invitation'),
+]

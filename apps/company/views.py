@@ -3,12 +3,13 @@ from __future__ import unicode_literals
 
 from django.contrib.auth import get_user_model
 from django_filters import rest_framework as filters
-from datetime import datetime
+from django.utils import timezone
 
 from rest_framework import response, status
 from rest_framework.decorators import action
 from rest_framework.mixins import CreateModelMixin, UpdateModelMixin, DestroyModelMixin
 from rest_framework.viewsets import GenericViewSet
+from rest_framework.generics import GenericAPIView
 
 from apps.common import constant as common_constant
 from apps.company import permissions as company_permissions
@@ -20,6 +21,8 @@ from apps.company.permissions import (
     IsInactiveEmployee,
     IsCompanyAdmin
 )
+
+from apps.common.helper import filter_invite_token
 from apps.company.tasks import invite_via_csv
 
 
@@ -28,7 +31,7 @@ User = get_user_model()
 
 class CompanyBaseClassView(GenericViewSet):
     '''
-    Base class for company views view 
+    Base class for company views.
     '''
     queryset = UserCompany.objects.all()
 
@@ -67,7 +70,7 @@ class CreateCompanyView(CompanyBaseClassView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return response.Response(serializer.data, status=status.HTTP_204_NO_CONTENT)
+        return response.Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class EmployeeCompanyView(UpdateModelMixin, DestroyModelMixin, CompanyBaseClassView):
@@ -75,15 +78,20 @@ class EmployeeCompanyView(UpdateModelMixin, DestroyModelMixin, CompanyBaseClassV
     my_company:
         Return company of employee
     partial_update:
-        update employee details
+        update employee details.
+    destroy:
+        make user inactive in active company
     '''
     serializer_class = company_serializer.EmployeeSerializer
     permission_classes = (IsActiveCompanyAdmin,)
 
     def perform_destroy(self, instance):
-        instance.status = common_constant.USER_STATUS.INACTIVE
-        instance.left_at = datetime.now()
-        instance.save()
+        if instance.status == common_constant.USER_STATUS.INVITED:
+            instance.delete()
+        elif instance.status == common_constant.USER_STATUS.ACTIVE:
+            instance.status = common_constant.USER_STATUS.INACTIVE
+            instance.left_at = timezone.now()
+            instance.save()
 
     @action(detail=False, url_path='my-company', permission_classes=[IsActiveCompanyEmployee])
     def my_company(self, request):
@@ -92,7 +100,8 @@ class EmployeeCompanyView(UpdateModelMixin, DestroyModelMixin, CompanyBaseClassV
         '''
         instance = self.get_queryset().get(user=request.user, company=request.user.company)
         serializer = company_serializer.EmployeeCompanySerializer(
-            instance=instance)
+            instance=instance
+        )
         return response.Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -159,3 +168,53 @@ class InviteEmployeeView(GenericViewSet):
         invite_via_csv.delay(instance.id)
 
         return response.Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class InvitationView(GenericAPIView):
+    '''
+    get:
+        handle get request for invitation token.
+    put:
+        handle invitation request to activate user, if required reset password.
+    patch:
+        handle invitation request to activate user, if required reset password.
+    '''
+    serializer_class = company_serializer.InvitationSerializer
+
+    def get_object(self):
+        _, user, user_company = filter_invite_token(self.kwargs['token'])
+        return (user, user_company)
+
+    def get(self, request, token):
+        user, user_company = self.get_object()
+        if user.is_active:
+            user_company.status = common_constant.USER_STATUS.ACTIVE
+            user_company.save()
+
+            # delete other invitaions, if have any
+            qs = user.user_companies.filter(
+                status=common_constant.USER_STATUS.INVITED
+            )
+            if qs.exists():
+                qs.delete()
+
+            return response.Response(status=status.HTTP_204_NO_CONTENT)
+        return response.Response(status=status.HTTP_200_OK)
+
+    def put(self, request, token):
+        return self.patch(request, token)
+
+    def patch(self, request, token):
+        user, user_company = self.get_object()
+        serilizer = self.get_serializer(
+            data=request.data,
+            instance=user,
+            context={
+                'request': request,
+                'user_company': user_company
+            }
+        )
+
+        serilizer.is_valid(raise_exception=True)
+        serilizer.save()
+        return response.Response(serilizer.data, status=status.HTTP_200_OK)
