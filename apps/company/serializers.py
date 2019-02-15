@@ -280,7 +280,7 @@ class InviteEmployeeSerializer(UserCompanySerializer):
             user=user,
             company=company,
             status=common_constant.USER_STATUS.INVITED,
-            defaults=dict(**validated_data)
+            defaults=validated_data
         )
 
         instance.send_invite()

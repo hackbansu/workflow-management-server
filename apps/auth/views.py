@@ -96,7 +96,7 @@ class InvitationView(GenericAPIView):
         return (user, user_company)
 
     def get(self, request, token):
-        user, user_company = filter_invite_token(token)
+        user, user_company = self.get_object()
         if user.is_active:
             user_company.status = common_constant.USER_STATUS.ACTIVE
             user_company.save()
@@ -115,7 +115,7 @@ class InvitationView(GenericAPIView):
         return self.patch(request, token)
 
     def patch(self, request, token):
-        user, user_company = filter_invite_token(token)
+        user, user_company = self.get_object()
         serilizer = self.get_serializer(
             data=request.data,
             instance=user,

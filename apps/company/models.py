@@ -18,6 +18,7 @@ User = get_user_model()
 
 logger = logging.getLogger(__name__)
 
+
 def company_logo_dir(_, filename):
     '''
     company logo dir.
@@ -26,6 +27,7 @@ def company_logo_dir(_, filename):
         uuid=uuid.uuid4(),
         filename=filename
     )
+
 
 def company_invite_csv_dir(_, filename):
     '''
@@ -66,7 +68,8 @@ class Company(BaseModel):
         '''
         admins = self.user_companies.filter(
             is_admin=True,
-            status__in=[common_constant.USER_STATUS.ACTIVE, common_constant.USER_STATUS.INVITED]
+            status__in=[common_constant.USER_STATUS.ACTIVE,
+                        common_constant.USER_STATUS.INVITED]
         )
 
         for admin in admins:
@@ -79,7 +82,7 @@ class Company(BaseModel):
                 'company-create.html',
                 'Company Registration', context
             )
-            logger.info('creation mail send to %s '%(admin.user.email) )
+            logger.info('creation mail send to %s ' % (admin.user.email))
 
 
 class Link(BaseModel):
@@ -151,7 +154,7 @@ class UserCompany(BaseModel):
             user=self.user_id,
             company=self.company_id
         )
-    
+
     def get_invite_token(self):
         token = invite_token_generator.make_token(self.user, self)
         return '%s--%s--%s' % (token, self.user.id, self.id)
@@ -171,7 +174,9 @@ class UserCompany(BaseModel):
             'Invitation to join',
             context
         )
-        logger.info('Invite mail send to {email}'.format(email=self.user.email))
+        logger.info('Invite mail send to {email}'.format(
+            email=self.user.email))
+
 
 class UserCompanyCsv(BaseModel):
     '''

@@ -16,7 +16,8 @@ def invite_via_csv(csv_object_id):
     # update the status of the csv file to in-progress
     csv_instance.status = common_constant.CSV_STATUS.INPROGRESS
     csv_instance.save()
-    logger.info('File {file_name} in progress'.format(file_name=csv_instance.csv_file.name))
+    logger.info('File {file_name} in progress'.format(
+        file_name=csv_instance.csv_file.name))
 
     data = parse_invite_csv(csv_instance.csv_file)
 
@@ -24,19 +25,26 @@ def invite_via_csv(csv_object_id):
         # update the status of the csv file to error
         csv_instance.status = common_constant.CSV_STATUS.ERROR
         csv_instance.save()
-        logger.info('File {file_name} generated error'.format(file_name=csv_instance.csv_file.name))
+        logger.info('File {file_name} generated error'.format(
+            file_name=csv_instance.csv_file.name))
         return
 
-    serializer = InviteEmployeeCsvSerializer(data=data, context={'request': {
-        'user': csv_instance.user_company.user
-    }}, many=True)
+    serializer = InviteEmployeeCsvSerializer(
+        data=data,
+        context={
+            'request': {
+                'user': csv_instance.user_company.user
+            }
+        },
+        many=True)
     is_valid = serializer.is_valid(raise_exception=False)
 
     if not is_valid:
         # update the status of the csv file to error
         csv_instance.status = common_constant.CSV_STATUS.ERROR
         csv_instance.save()
-        logger.info('File {file_name} generated error'.format(file_name=csv_instance.csv_file.name))
+        logger.info('File {file_name} generated error'.format(
+            file_name=csv_instance.csv_file.name))
         return
 
     serializer.save()
@@ -44,4 +52,5 @@ def invite_via_csv(csv_object_id):
     # update the status of the csv file to processed
     csv_instance.status = common_constant.CSV_STATUS.PROCESSED
     csv_instance.save()
-    logger.info('File {file_name} processed'.format(file_name=csv_instance.csv_file.name))
+    logger.info('File {file_name} processed'.format(
+        file_name=csv_instance.csv_file.name))
