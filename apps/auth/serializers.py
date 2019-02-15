@@ -214,25 +214,3 @@ class ResetPasswordSerializer(UpdateUserSerializer):
                 'write_only': True
             }
         }
-
-
-class InvitationSerializer(ResetPasswordSerializer):
-    '''
-    Serializer to accept invitaion of user
-    '''
-
-    def update(self, instance, validated_data):
-        '''
-        Override to activate employee account.
-        '''
-        user_company = self.context['user_company']
-        user_company.status = common_constant.USER_STATUS.ACTIVE
-        user_company.save()
-
-        qs = self.instance.user_companies.filter(
-            status=common_constant.USER_STATUS.INVITED
-        )
-        if qs.exists():
-            qs.delete()
-
-        return super(InvitationSerializer, self).update(instance, validated_data)

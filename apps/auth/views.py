@@ -8,12 +8,12 @@ from rest_framework import response, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.generics import GenericAPIView, RetrieveAPIView, UpdateAPIView
+from rest_framework.generics import RetrieveAPIView, UpdateAPIView
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.authentication import TokenAuthentication
 
 from apps.auth import serializers as auth_serializer
-from apps.common.helper import filter_reset_password_token, filter_invite_token
+from apps.common.helper import filter_reset_password_token
 from apps.common.permissions import IsNotAuthenticated
 from apps.common import constant as common_constant
 
@@ -78,56 +78,6 @@ class ResetPasswordView(RetrieveAPIView, UpdateAPIView):
     def get_object(self):
         _, user = filter_reset_password_token(self.kwargs['token'])
         return user
-
-
-class InvitationView(GenericAPIView):
-    '''
-    get:
-        handle get request for invitation token.
-    put:
-        handle invitation request to activate user, if required reset password.
-    patch:
-        handle invitation request to activate user, if required reset password.
-    '''
-    serializer_class = auth_serializer.InvitationSerializer
-
-    def get_object(self):
-        _, user, user_company = filter_invite_token(self.kwargs['token'])
-        return (user, user_company)
-
-    def get(self, request, token):
-        user, user_company = self.get_object()
-        if user.is_active:
-            user_company.status = common_constant.USER_STATUS.ACTIVE
-            user_company.save()
-
-            # delete other invitaions, if have any
-            qs = user.user_companies.filter(
-                status=common_constant.USER_STATUS.INVITED
-            )
-            if qs.exists():
-                qs.delete()
-
-            return response.Response(status=status.HTTP_204_NO_CONTENT)
-        return response.Response(status=status.HTTP_200_OK)
-
-    def put(self, request, token):
-        return self.patch(request, token)
-
-    def patch(self, request, token):
-        user, user_company = self.get_object()
-        serilizer = self.get_serializer(
-            data=request.data,
-            instance=user,
-            context={
-                'request': request,
-                'user_company': user_company
-            }
-        )
-
-        serilizer.is_valid(raise_exception=True)
-        serilizer.save()
-        return response.Response(serilizer.data, status=status.HTTP_200_OK)
 
 
 class ProfileView(RetrieveAPIView, UpdateAPIView):

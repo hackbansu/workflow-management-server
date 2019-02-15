@@ -9,7 +9,7 @@ from rest_framework.generics import get_object_or_404
 from apps.auth.serializers import UpdateUserSerializer, CreateUserSerializer, InviteUserSerializer
 from apps.common import constant as common_constant
 from apps.company.models import Company, Link, UserCompany, UserCompanyCsv
-
+from apps.auth.serializers import ResetPasswordSerializer
 
 User = get_user_model()
 
@@ -320,6 +320,28 @@ class InviteEmployeeCsvSerializer(InviteEmployeeSerializer):
 
     class Meta(InviteEmployeeSerializer.Meta):
         pass
+
+
+class InvitationSerializer(ResetPasswordSerializer):
+    '''
+    Serializer to accept invitaion of user
+    '''
+
+    def update(self, instance, validated_data):
+        '''
+        Override to activate employee account.
+        '''
+        user_company = self.context['user_company']
+        user_company.status = common_constant.USER_STATUS.ACTIVE
+        user_company.save()
+
+        qs = self.instance.user_companies.filter(
+            status=common_constant.USER_STATUS.INVITED
+        )
+        if qs.exists():
+            qs.delete()
+
+        return super(InvitationSerializer, self).update(instance, validated_data)
 
 
 class EmployeeSerializer(serializers.ModelSerializer):
