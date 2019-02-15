@@ -179,30 +179,16 @@ class UserCompanySerializer(serializers.ModelSerializer):
             }
         }
 
+
 class UserCompanyCsvSerializer(serializers.ModelSerializer):
     '''
     Company link serializer.
     '''
 
-    status = serializers.SerializerMethodField()
-
-    def get_status(self, obj):
-        '''
-        return status equivalent.
-        '''
-        return obj.get_status_display()
-    
-    def get_user_company_instance(self, attr):
-        '''
-        return user instance, can be override to adapt to get user from diffrent.
-        '''
-        user = self.context.get('request').user
-        user_company = get_object_or_404(
-            user.user_companies, status=common_constant.USER_STATUS.ACTIVE)
-        return user_company
+    status = serializers.CharField(source='get_status_display', read_only=True)
 
     def create(self, validated_data):
-        user_company = self.get_user_company_instance(validated_data)
+        user_company = self.context['request'].user.active_employee
         # just a safty precaution
         validated_data.pop('user_company', None)
 
@@ -211,18 +197,16 @@ class UserCompanyCsvSerializer(serializers.ModelSerializer):
             **validated_data
         )
         return instance
-        
+
     class Meta:
         model = UserCompanyCsv
         fields = ('csv_file', 'status')
         extra_kwargs = {
-            'status': {
-                'read_only': True
-            },
-            'csv_file':{
+            'csv_file': {
                 'write_only': True
             }
         }
+
 
 class UserCompanySignupSerializer(UserCompanySerializer):
     '''
@@ -262,17 +246,14 @@ class InviteEmployeeSerializer(UserCompanySerializer):
     def get_user_company_qs(self, attr):
         company = self.get_company_instance(attr)
         return UserCompany.objects.filter(
-            Q(user__email=attr['user']['email'],) & 
+            Q(user__email=attr['user']['email'],) &
             Q(status=common_constant.USER_STATUS.ACTIVE)
         )
 
     def get_company_instance(self, attr):
         if hasattr(self, 'company'):
             return self.company
-        try:
-            user = self.context.get('request').user
-        except:
-            user = self.context.get('request')['user']
+        user = self.context.get('request').user
         self.company = user.company
         return self.company
 
@@ -323,6 +304,22 @@ class InviteEmployeeSerializer(UserCompanySerializer):
                 'read_only': True
             }
         }
+
+
+class InviteEmployeeCsvSerializer(InviteEmployeeSerializer):
+    '''
+    Invite employess to the company via csv.
+    '''
+
+    def get_company_instance(self, attr):
+        if hasattr(self, 'company'):
+            return self.company
+        user = self.context.get('request')['user']
+        self.company = user.company
+        return self.company
+
+    class Meta(InviteEmployeeSerializer.Meta):
+        pass
 
 
 class EmployeeSerializer(serializers.ModelSerializer):

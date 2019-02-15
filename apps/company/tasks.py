@@ -1,7 +1,7 @@
 from celery import shared_task
 
 from apps.common import constant as common_constant
-from apps.company.serializers import InviteEmployeeSerializer
+from apps.company.serializers import InviteEmployeeCsvSerializer
 from apps.common.helper import parse_invite_csv
 from apps.company.models import UserCompany, UserCompanyCsv
 
@@ -23,7 +23,7 @@ def invite_via_csv(csv_object_id):
         print("status updated to error 1")
         return
 
-    serializer = InviteEmployeeSerializer(data=data, context={'request': {
+    serializer = InviteEmployeeCsvSerializer(data=data, context={'request': {
         'user': csv_instance.user_company.user
     }}, many=True)
     is_valid = serializer.is_valid(raise_exception=False)

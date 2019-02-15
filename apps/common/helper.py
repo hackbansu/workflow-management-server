@@ -137,7 +137,7 @@ def parse_invite_csv(file):
                 },
                 'designation': row['designation']
             })
-        except:
+        except KeyError:
             return None
 
     return data
