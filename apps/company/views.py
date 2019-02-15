@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 
 from django.contrib.auth import get_user_model
 from django_filters import rest_framework as filters
-from datetime import datetime
+from django.utils import timezone
 
 from rest_framework import response, status
 from rest_framework.decorators import action
@@ -83,9 +83,12 @@ class EmployeeCompanyView(UpdateModelMixin, DestroyModelMixin, CompanyBaseClassV
     permission_classes = (IsActiveCompanyAdmin,)
 
     def perform_destroy(self, instance):
-        instance.status = common_constant.USER_STATUS.INACTIVE
-        instance.left_at = datetime.now()
-        instance.save()
+        if instance.status == common_constant.USER_STATUS.INVITED:
+            instance.delete()
+        elif instance.status == common_constant.USER_STATUS.ACTIVE:
+            instance.status = common_constant.USER_STATUS.INACTIVE
+            instance.left_at = timezone.now()
+            instance.save()
 
     @action(detail=False, url_path='my-company', permission_classes=[IsActiveCompanyEmployee])
     def my_company(self, request):
