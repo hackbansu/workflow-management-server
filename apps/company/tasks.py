@@ -32,9 +32,7 @@ def invite_via_csv(csv_object_id):
     serializer = InviteEmployeeCsvSerializer(
         data=data,
         context={
-            'request': {
-                'user': csv_instance.user_company.user
-            }
+            'user': csv_instance.user_company.user
         },
         many=True)
     is_valid = serializer.is_valid(raise_exception=False)

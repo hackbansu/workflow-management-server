@@ -85,9 +85,9 @@ class InvitationView(GenericAPIView):
     get:
         handle get request for invitation token.
     put:
-        handle reset invitation request.
+        handle invitation request to activate user, if required reset password.
     patch:
-        handle reset invitation request.
+        handle invitation request to activate user, if required reset password.
     '''
     serializer_class = auth_serializer.InvitationSerializer
 

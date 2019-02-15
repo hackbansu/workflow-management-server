@@ -314,7 +314,7 @@ class InviteEmployeeCsvSerializer(InviteEmployeeSerializer):
     def get_company_instance(self, attr):
         if hasattr(self, 'company'):
             return self.company
-        user = self.context.get('request')['user']
+        user = self.context.get('user')
         self.company = user.company
         return self.company
 

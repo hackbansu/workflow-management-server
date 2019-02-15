@@ -87,7 +87,7 @@ class EmployeeCompanyView(UpdateModelMixin, DestroyModelMixin, CompanyBaseClassV
             instance.delete()
         elif instance.status == common_constant.USER_STATUS.ACTIVE:
             instance.status = common_constant.USER_STATUS.INACTIVE
-            instance.left_at = timezone.now()   
+            instance.left_at = timezone.now()
             instance.save()
 
     @action(detail=False, url_path='my-company', permission_classes=[IsActiveCompanyEmployee])

@@ -21,7 +21,9 @@ class BaseUserSerializer(serializers.ModelSerializer):
     '''
 
     profile_photo_url = serializers.URLField(
-        source='profile_photo', read_only=True)
+        source='profile_photo',
+        read_only=True
+    )
 
     class Meta:
         model = User
