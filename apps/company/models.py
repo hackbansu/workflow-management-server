@@ -66,8 +66,9 @@ class Company(BaseModel):
         '''
         admins = self.user_companies.filter(
             is_admin=True,
-            status=common_constant.USER_STATUS.ACTIVE
+            status__in=[common_constant.USER_STATUS.ACTIVE, common_constant.USER_STATUS.INVITED]
         )
+
         for admin in admins:
             context = {
                 'name': admin.user.name,

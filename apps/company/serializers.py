@@ -237,7 +237,7 @@ class UserCompanySignupSerializer(UserCompanySerializer):
             password='DefaultPassword',
             **user_data
         )
-        user.verification_mail()
+        # user.verification_mail()
         return user
 
     def get_user_company_qs(self, attr):
