@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 from django.contrib.auth import get_user_model
 from django_filters import rest_framework as filters
+from datetime import datetime
 
 from rest_framework import response, status
 from rest_framework.decorators import action
@@ -77,10 +78,11 @@ class EmployeeCompanyView(UpdateModelMixin, DestroyModelMixin, CompanyBaseClassV
         update employee details
     '''
     serializer_class = company_serializer.EmployeeSerializer
-    permission_classes = [IsActiveCompanyAdmin]
+    permission_classes = (IsActiveCompanyAdmin,)
 
     def perform_destroy(self, instance):
         instance.status = common_constant.USER_STATUS.INACTIVE
+        instance.left_at = datetime.now()
         instance.save()
 
     @action(detail=False, url_path='my-company', permission_classes=[IsActiveCompanyEmployee])
@@ -127,8 +129,8 @@ class InviteEmployeeView(GenericViewSet):
     Invite User to the company with this view.
     '''
     serializer_class = company_serializer.InviteEmployeeSerializer
-    permission_classes = [
-        company_permissions.IsActiveCompanyEmployee, company_permissions.IsCompanyAdmin]
+    permission_classes = (company_permissions.IsActiveCompanyEmployee,
+                          company_permissions.IsCompanyAdmin)
     queryset = UserCompany.objects.all()
 
     @action(detail=False, methods=['post'], url_path='invite-employee',)
