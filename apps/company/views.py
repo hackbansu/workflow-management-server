@@ -109,10 +109,6 @@ class EmployeesView(GenericViewSet):
     def get_queryset(self):
         return self.queryset.filter(
             company=self.request.user.company,
-            status__in=[
-                common_constant.USER_STATUS.ACTIVE,
-                common_constant.USER_STATUS.INVITED
-            ]
         )
 
     @action(detail=False, methods=['get'], )
