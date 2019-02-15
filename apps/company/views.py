@@ -6,7 +6,7 @@ from django_filters import rest_framework as filters
 
 from rest_framework import response, status
 from rest_framework.decorators import action
-from rest_framework.mixins import CreateModelMixin, UpdateModelMixin
+from rest_framework.mixins import CreateModelMixin, UpdateModelMixin, DestroyModelMixin
 from rest_framework.viewsets import GenericViewSet
 
 from apps.common import constant as common_constant
@@ -69,7 +69,7 @@ class CreateCompanyView(CompanyBaseClassView):
         return response.Response(serializer.data, status=status.HTTP_204_NO_CONTENT)
 
 
-class EmployeeCompanyView(UpdateModelMixin, CompanyBaseClassView):
+class EmployeeCompanyView(UpdateModelMixin, DestroyModelMixin, CompanyBaseClassView):
     '''
     my_company:
         Return company of employee
@@ -78,6 +78,10 @@ class EmployeeCompanyView(UpdateModelMixin, CompanyBaseClassView):
     '''
     serializer_class = company_serializer.EmployeeSerializer
     permission_classes = [IsActiveCompanyAdmin]
+
+    def perform_destroy(self, instance):
+        instance.status = common_constant.USER_STATUS.INACTIVE
+        instance.save()
 
     @action(detail=False, url_path='my-company', permission_classes=[IsActiveCompanyEmployee])
     def my_company(self, request):
