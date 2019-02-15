@@ -28,7 +28,7 @@ User = get_user_model()
 
 class CompanyBaseClassView(GenericViewSet):
     '''
-    Base class for company views view 
+    Base class for company views.
     '''
     queryset = UserCompany.objects.all()
 
@@ -67,7 +67,7 @@ class CreateCompanyView(CompanyBaseClassView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return response.Response(serializer.data, status=status.HTTP_204_NO_CONTENT)
+        return response.Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class EmployeeCompanyView(UpdateModelMixin, DestroyModelMixin, CompanyBaseClassView):
@@ -75,7 +75,9 @@ class EmployeeCompanyView(UpdateModelMixin, DestroyModelMixin, CompanyBaseClassV
     my_company:
         Return company of employee
     partial_update:
-        update employee details
+        update employee details.
+    destroy:
+        make user inactive in active company
     '''
     serializer_class = company_serializer.EmployeeSerializer
     permission_classes = (IsActiveCompanyAdmin,)
@@ -92,7 +94,8 @@ class EmployeeCompanyView(UpdateModelMixin, DestroyModelMixin, CompanyBaseClassV
         '''
         instance = self.get_queryset().get(user=request.user, company=request.user.company)
         serializer = company_serializer.EmployeeCompanySerializer(
-            instance=instance)
+            instance=instance
+        )
         return response.Response(serializer.data, status=status.HTTP_200_OK)
 
 

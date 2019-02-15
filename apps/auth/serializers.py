@@ -20,11 +20,13 @@ class BaseUserSerializer(serializers.ModelSerializer):
     Base user serializer, purpose to give only basic detail of user.
     '''
 
-    profile_photo_url = serializers.URLField(source='profile_photo', read_only=True);
+    profile_photo_url = serializers.URLField(
+        source='profile_photo', read_only=True)
 
     class Meta:
         model = User
-        fields = ('first_name', 'last_name', 'profile_photo', 'profile_photo_url')
+        fields = ('first_name', 'last_name',
+                  'profile_photo', 'profile_photo_url')
         extra_kwargs = {
             'last_name': {
                 'help_text': 'User last name'
