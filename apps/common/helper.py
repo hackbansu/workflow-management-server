@@ -1,4 +1,4 @@
-
+import csv
 from datetime import date
 
 from django.conf import settings
@@ -122,3 +122,22 @@ def filter_invite_token(token):
 
 
 invite_token_generator = InviteToken()
+
+
+def parse_invite_csv(file):
+    data = []
+    reader = csv.DictReader(file, delimiter=',')
+    for row in reader:
+        try:
+            data.append({
+                'user': {
+                    'email': row['email'],
+                    'first_name': row['first name'],
+                    'last_name': row['last name']
+                },
+                'designation': row['designation']
+            })
+        except KeyError:
+            return None
+
+    return data

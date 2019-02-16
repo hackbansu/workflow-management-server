@@ -19,6 +19,10 @@ CREATE EXTENSION citext;
 ```
 python manage.py migrate
 ```
+- Now start celery worker
+```
+celery -A workflow_platform worker -l info
+```
 - Now you can fire your app with 
 ```
 python manage.py runserver

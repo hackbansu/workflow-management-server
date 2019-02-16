@@ -42,7 +42,7 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'rest_framework.authtoken',
-    'rest_framework_swagger',
+    'drf_yasg',
     'django_filters',
 
     'debug_panel',
@@ -185,7 +185,6 @@ logging.config.dictConfig({
         },
     },
 })
-
 
 try:
     from workflow_platform.settings.settings_local import *

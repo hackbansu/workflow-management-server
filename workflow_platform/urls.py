@@ -18,17 +18,35 @@ from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
 
-from rest_framework_swagger.views import get_swagger_view
+from rest_framework import permissions
+from drf_yasg.views import get_schema_view
+from drf_yasg import openapi
+
 
 from apps.auth.urls import urlpatterns as auth_urls
 from apps.company.urls import urlpatterns as company_urls
 
 
-schema_view = get_swagger_view('workflow platform')
+schema_view = get_schema_view(
+    openapi.Info(
+        title="Workflow Platform",
+        default_version='v1',
+        description="Workflow platform api",
+    ),
+    public=True,
+    permission_classes=(permissions.AllowAny,),
+)
+
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-    url(r'^api/docs/', schema_view),
+    url(r'^api/docs(?P<format>\.json|\.yaml)$',
+        schema_view.without_ui(cache_timeout=0), name='schema-json'),
+    url(r'^api/docs/$', schema_view.with_ui('swagger',
+                                            cache_timeout=0), name='schema-swagger-ui'),
+    url(r'^api/redoc/$', schema_view.with_ui('redoc',
+                                             cache_timeout=0), name='schema-redoc'),
+
     url(r'^api/', include([url for url_patterns in [
         auth_urls,
         company_urls

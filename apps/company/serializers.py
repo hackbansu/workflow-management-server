@@ -4,10 +4,12 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import FieldDoesNotExist
 from django.db.models import Q
 from rest_framework import serializers
+from rest_framework.generics import get_object_or_404
 
 from apps.auth.serializers import UpdateUserSerializer, CreateUserSerializer, InviteUserSerializer
 from apps.common import constant as common_constant
-from apps.company.models import Company, Link, UserCompany
+from apps.company.models import Company, Link, UserCompany, UserCompanyCsv
+from apps.auth.serializers import ResetPasswordSerializer
 
 User = get_user_model()
 
@@ -27,7 +29,7 @@ class CompanySerializer(serializers.ModelSerializer):
     '''
     status = serializers.SerializerMethodField()
     links = LinkSerializer(many=True, required=False)
-    logo_url = serializers.URLField(source='logo');
+    logo_url = serializers.URLField(source='logo', read_only=True)
 
     def get_status(self, obj):
         '''
@@ -88,7 +90,7 @@ class CompanySerializer(serializers.ModelSerializer):
         model = Company
         fields = (
             'id', 'name', 'address', 'city',
-            'state', 'logo','logo_url', 'status', 'links'
+            'state', 'logo', 'logo_url', 'status', 'links'
         )
         extra_kwargs = {
             'id': {
@@ -166,7 +168,6 @@ class UserCompanySerializer(serializers.ModelSerializer):
             'designation', 'status'
         )
         extra_kwargs = {
-
             'designation': {
                 'required': True
             },
@@ -175,6 +176,34 @@ class UserCompanySerializer(serializers.ModelSerializer):
             },
             'status': {
                 'read_only': True
+            }
+        }
+
+
+class UserCompanyCsvSerializer(serializers.ModelSerializer):
+    '''
+    Company link serializer.
+    '''
+
+    status = serializers.CharField(source='get_status_display', read_only=True)
+
+    def create(self, validated_data):
+        user_company = self.context['request'].user.active_employee
+        # just a safty precaution
+        validated_data.pop('user_company', None)
+
+        instance = UserCompanyCsv.objects.create(
+            user_company=user_company,
+            **validated_data
+        )
+        return instance
+
+    class Meta:
+        model = UserCompanyCsv
+        fields = ('csv_file', 'status')
+        extra_kwargs = {
+            'csv_file': {
+                'write_only': True
             }
         }
 
@@ -192,7 +221,7 @@ class UserCompanySignupSerializer(UserCompanySerializer):
             password='DefaultPassword',
             **user_data
         )
-        user.verification_mail()
+        # user.verification_mail()
         return user
 
     def get_user_company_qs(self, attr):
@@ -218,11 +247,7 @@ class InviteEmployeeSerializer(UserCompanySerializer):
         company = self.get_company_instance(attr)
         return UserCompany.objects.filter(
             Q(user__email=attr['user']['email'],) &
-            (
-                Q(status=common_constant.USER_STATUS.ACTIVE) |
-                Q(is_admin=True) |
-                Q(company=company)
-            )
+            Q(status=common_constant.USER_STATUS.ACTIVE)
         )
 
     def get_company_instance(self, attr):
@@ -251,12 +276,13 @@ class InviteEmployeeSerializer(UserCompanySerializer):
         validated_data.pop('company', None)
         validated_data.pop('user', None)
 
-        instance = UserCompany.objects.create(
+        instance, _ = UserCompany.objects.get_or_create(
             user=user,
             company=company,
             status=common_constant.USER_STATUS.INVITED,
-            **validated_data
+            defaults=validated_data
         )
+
         instance.send_invite()
         return instance
 
@@ -278,6 +304,44 @@ class InviteEmployeeSerializer(UserCompanySerializer):
                 'read_only': True
             }
         }
+
+
+class InviteEmployeeCsvSerializer(InviteEmployeeSerializer):
+    '''
+    Invite employess to the company via csv.
+    '''
+
+    def get_company_instance(self, attr):
+        if hasattr(self, 'company'):
+            return self.company
+        user = self.context.get('user')
+        self.company = user.company
+        return self.company
+
+    class Meta(InviteEmployeeSerializer.Meta):
+        pass
+
+
+class InvitationSerializer(ResetPasswordSerializer):
+    '''
+    Serializer to accept invitaion of user
+    '''
+
+    def update(self, instance, validated_data):
+        '''
+        Override to activate employee account.
+        '''
+        user_company = self.context['user_company']
+        user_company.status = common_constant.USER_STATUS.ACTIVE
+        user_company.save()
+
+        qs = self.instance.user_companies.filter(
+            status=common_constant.USER_STATUS.INVITED
+        )
+        if qs.exists():
+            qs.delete()
+
+        return super(InvitationSerializer, self).update(instance, validated_data)
 
 
 class EmployeeSerializer(serializers.ModelSerializer):

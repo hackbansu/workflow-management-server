@@ -18,11 +18,22 @@ User = get_user_model()
 
 logger = logging.getLogger(__name__)
 
+
 def company_logo_dir(_, filename):
     '''
     company logo dir.
     '''
     return 'company/logo/{uuid}_{filename}'.format(
+        uuid=uuid.uuid4(),
+        filename=filename
+    )
+
+
+def company_invite_csv_dir(_, filename):
+    '''
+    company invite csv dir.
+    '''
+    return 'company/csv/{uuid}_{filename}'.format(
         uuid=uuid.uuid4(),
         filename=filename
     )
@@ -57,8 +68,10 @@ class Company(BaseModel):
         '''
         admins = self.user_companies.filter(
             is_admin=True,
-            status=common_constant.USER_STATUS.ACTIVE
+            status__in=[common_constant.USER_STATUS.ACTIVE,
+                        common_constant.USER_STATUS.INVITED]
         )
+
         for admin in admins:
             context = {
                 'name': admin.user.name,
@@ -69,7 +82,7 @@ class Company(BaseModel):
                 'company-create.html',
                 'Company Registration', context
             )
-            logger.info('creation mail send to %s '%(admin.user.email) )
+            logger.info('creation mail send to %s ' % (admin.user.email))
 
 
 class Link(BaseModel):
@@ -141,10 +154,10 @@ class UserCompany(BaseModel):
             user=self.user_id,
             company=self.company_id
         )
-    
+
     def get_invite_token(self):
         token = invite_token_generator.make_token(self.user, self)
-        return '%s--%s--%s' % (token, self.user, self)
+        return '%s--%s--%s' % (token, self.user.id, self.id)
 
     def send_invite(self):
         '''
@@ -161,4 +174,30 @@ class UserCompany(BaseModel):
             'Invitation to join',
             context
         )
-        logger.info('Invite mail send to {email}'.format(email=self.user.email))
+        logger.info('Invite mail send to {email}'.format(
+            email=self.user.email))
+
+
+class UserCompanyCsv(BaseModel):
+    '''
+    CSV invite files uploaded by admins of the companies.
+    '''
+    user_company = models.ForeignKey(
+        to=UserCompany,
+        on_delete=models.CASCADE,
+        related_name='csvs'
+    )
+    csv_file = models.FileField(upload_to=company_invite_csv_dir, blank=False)
+    status = models.PositiveIntegerField(
+        choices=(choice for choice in zip(
+            common_constant.CSV_STATUS,
+            common_constant.CSV_STATUS._fields
+        )),
+        default=common_constant.CSV_STATUS.PENDING
+    )
+
+    def __unicode__(self):
+        return '{user_company}-#-{status}'.format(
+            user_company=self.user_company_id,
+            status=self.get_status_display()
+        )

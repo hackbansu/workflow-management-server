@@ -16,3 +16,5 @@ EMAIL_HOST_PASSWORD=<smtp-password>
 EMAIL_PORT = <smtp-port>
 
 ALLOWED_HOSTS = ['*']
+
+CELERY_BROKER_URL = <broker url>
