@@ -138,7 +138,7 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-MEDIA_URL = 'media/'
+MEDIA_URL = '/media/'
 MEDIA_ROOT = "workflow_platform/media/"
 
 REST_FRAMEWORK = {
@@ -185,6 +185,20 @@ logging.config.dictConfig({
         },
     },
 })
+
+SWAGGER_SETTINGS = {
+    'USE_SESSION_AUTH': False,
+    'SECURITY_DEFINITIONS': {
+        'api_key': {
+            'type': 'apiKey',
+            'description': 'Token Authentication',
+            'name': 'Authorization',
+            'in': 'header',
+        },
+    },
+    'LOGIN_URL': '/api/auth/login/',
+    'LOGOUT_URL': '/api/auth/logout/'
+}
 
 try:
     from workflow_platform.settings.settings_local import *
