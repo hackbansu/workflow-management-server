@@ -8,7 +8,6 @@ from django.contrib.auth import get_user_model
 from rest_framework import response, status
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
 from rest_framework.generics import RetrieveAPIView, UpdateAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.viewsets import GenericViewSet
@@ -16,7 +15,6 @@ from rest_framework.viewsets import GenericViewSet
 from apps.auth import serializers as auth_serializer
 from apps.common import constant as common_constant
 from apps.common.helper import filter_reset_password_token
-from apps.common.permissions import IsNotAuthenticated
 
 User = get_user_model()
 
@@ -38,7 +36,7 @@ class UserAuthView(GenericViewSet):
     queryset = User.objects.all()
     authentication_classes = ()
 
-    @action(detail=False, methods=['post'],)
+    @action(detail=False, methods=['post'], permission_classes=(AllowAny,))
     def login(self, request):
         serializer = self.get_serializer(data=request.data)
 
@@ -48,12 +46,13 @@ class UserAuthView(GenericViewSet):
         serializer = auth_serializer.UserDetailSerializer(instance=user)
         return response.Response(serializer.data, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=['delete'], authentication_classes=(TokenAuthentication,),  permission_classes=(IsAuthenticated,))
+    @action(detail=False, methods=['delete'],
+            authentication_classes=(TokenAuthentication,),)
     def logout(self, request):
         request.user.auth_token.delete()
         return response.Response(status=status.HTTP_204_NO_CONTENT)
 
-    @action(detail=False, methods=['post'], url_path='request-reset',)
+    @action(detail=False, methods=['post'], url_path='request-reset', permission_classes=(AllowAny,))
     def request_reset(self, request):
         serializer = auth_serializer.ResetPasswordRequestSerializer(
             data=request.data
@@ -75,6 +74,7 @@ class ResetPasswordView(RetrieveAPIView, UpdateAPIView):
         handle reset password request.
     '''
     serializer_class = auth_serializer.ResetPasswordSerializer
+    permission_classes = (AllowAny,)
 
     def get_object(self):
         _, user = filter_reset_password_token(self.kwargs['token'])
@@ -90,7 +90,6 @@ class ProfileView(RetrieveAPIView, UpdateAPIView):
     patch:
         partially update login user profile.
     '''
-    permission_classes = [IsAuthenticated]
     serializer_class = auth_serializer.UpdateUserSerializer
 
     def get_object(self):

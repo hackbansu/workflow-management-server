@@ -10,6 +10,7 @@ from rest_framework.decorators import action
 from rest_framework.mixins import CreateModelMixin, UpdateModelMixin, DestroyModelMixin, ListModelMixin, RetrieveModelMixin
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.generics import GenericAPIView
+from rest_framework.permissions import AllowAny
 
 from apps.common import constant as common_constant
 from apps.company import permissions as company_permissions
@@ -41,7 +42,7 @@ class UpdateCompanyView(UpdateModelMixin, GenericViewSet):
     Update Company details.
     '''
     queryset = Company.objects.all()
-    permission_classes = [IsCompanyAdmin]
+    permission_classes = (IsCompanyAdmin,)
     serializer_class = company_serializer.CompanySerializer
 
 
@@ -52,6 +53,7 @@ class CreateCompanyUserView(CreateModelMixin, CompanyBaseClassView):
     '''
     serializer_class = company_serializer.UserCompanySignupSerializer
     authentication_classes = []
+    permission_classes = (AllowAny,)
 
 
 class CreateCompanyView(CompanyBaseClassView):
@@ -60,7 +62,7 @@ class CreateCompanyView(CompanyBaseClassView):
         Create company for old user
     '''
     serializer_class = company_serializer.UserCompanySerializer
-    permission_classes = [IsInactiveEmployee]
+    permission_classes = (IsInactiveEmployee,)
 
     @action(detail=False, methods=['post'], url_path='new-company',)
     def new_company(self, request):
