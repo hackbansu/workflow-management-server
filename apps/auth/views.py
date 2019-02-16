@@ -1,21 +1,22 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+
 import logging
 
 from django.contrib.auth import get_user_model
 
 from rest_framework import response, status
+from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.generics import RetrieveAPIView, UpdateAPIView
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.viewsets import GenericViewSet
-from rest_framework.authentication import TokenAuthentication
 
 from apps.auth import serializers as auth_serializer
+from apps.common import constant as common_constant
 from apps.common.helper import filter_reset_password_token
 from apps.common.permissions import IsNotAuthenticated
-from apps.common import constant as common_constant
 
 User = get_user_model()
 
@@ -35,7 +36,7 @@ class UserAuthView(GenericViewSet):
     '''
     serializer_class = auth_serializer.AuthTokenSerializer
     queryset = User.objects.all()
-    authentication_classes = []
+    authentication_classes = ()
 
     @action(detail=False, methods=['post'],)
     def login(self, request):
@@ -47,7 +48,7 @@ class UserAuthView(GenericViewSet):
         serializer = auth_serializer.UserDetailSerializer(instance=user)
         return response.Response(serializer.data, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=['delete'], authentication_classes=[TokenAuthentication],  permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=['delete'], authentication_classes=(TokenAuthentication,),  permission_classes=(IsAuthenticated,))
     def logout(self, request):
         request.user.auth_token.delete()
         return response.Response(status=status.HTTP_204_NO_CONTENT)

@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from rest_framework import response, status
 from rest_framework.decorators import action
-from rest_framework.mixins import CreateModelMixin, UpdateModelMixin, DestroyModelMixin
+from rest_framework.mixins import CreateModelMixin, UpdateModelMixin, DestroyModelMixin, ListModelMixin, RetrieveModelMixin
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.generics import GenericAPIView
 
@@ -85,6 +85,11 @@ class EmployeeCompanyView(UpdateModelMixin, DestroyModelMixin, CompanyBaseClassV
     serializer_class = company_serializer.EmployeeSerializer
     permission_classes = (IsActiveCompanyAdmin,)
 
+    def get_queryset(self):
+        return self.queryset.filter(
+            company=self.request.user.company
+        )
+
     def perform_destroy(self, instance):
         if instance.status == common_constant.USER_STATUS.INVITED:
             instance.delete()
@@ -105,7 +110,11 @@ class EmployeeCompanyView(UpdateModelMixin, DestroyModelMixin, CompanyBaseClassV
         return response.Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class EmployeesView(GenericViewSet):
+class RetreiveEmployee(RetrieveModelMixin, EmployeeCompanyView):
+    permission_classes = (IsActiveCompanyEmployee,)
+
+
+class EmployeesView(ListModelMixin, GenericViewSet):
     '''
     employees:
         return employees of company, can be filtered on the basis of status and admin is possible.
@@ -121,16 +130,6 @@ class EmployeesView(GenericViewSet):
         return self.queryset.filter(
             company=self.request.user.company,
         )
-
-    @action(detail=False, methods=['get'], )
-    def employees(self, request):
-        '''
-        list all employees of company.
-        '''
-        queryset = self.filter_queryset(self.get_queryset())
-        serialzer = self.get_serializer(queryset, many=True)
-
-        return response.Response(serialzer.data, status=status.HTTP_200_OK)
 
 
 class InviteEmployeeView(GenericViewSet):

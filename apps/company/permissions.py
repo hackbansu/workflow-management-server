@@ -35,9 +35,9 @@ class IsActiveCompanyAdmin(IsAuthenticated):
     Check if user is company admin. use for employee update.
     '''
 
-    def has_object_permission(self, request, view, obj):
-        employee_record = request.user.active_employee
-        return employee_record.company == obj.company and employee_record.is_admin
+    def has_permission(self, request, view):
+        isLogin = super(IsActiveCompanyAdmin, self).has_permission(request, view)
+        return isLogin and request.user.active_employee.is_admin
 
 
 class IsCompanyAdmin(IsAuthenticated):
