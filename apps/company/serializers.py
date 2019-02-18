@@ -331,7 +331,7 @@ class InvitationSerializer(ResetPasswordSerializer):
         '''
         Override to activate employee account.
         '''
-        user_company = self.context.get('user_company')
+        user_company = self.context['user_company']
         user_company.status = common_constant.USER_STATUS.ACTIVE
         user_company.save()
 

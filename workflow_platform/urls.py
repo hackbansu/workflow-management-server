@@ -47,12 +47,9 @@ urlpatterns = [
                                             cache_timeout=0), name='schema-swagger-ui'),
     url(r'^api/redoc/$', schema_view.with_ui('redoc',
                                              cache_timeout=0), name='schema-redoc'),
-
-    url(r'^api/', include([url for url_patterns in [
-        auth_urls,
-        company_urls,
-        workflow_template_urls
-    ] for url in url_patterns])),
+    url(r'^api/', include('apps.workflow_template.urls', namespace='workflow-template')),
+    url(r'^api/', include('apps.auth.urls', namespace='auth')),
+    url(r'^api/', include('apps.company.urls', namespace='company')),
 ]
 
 urlpatterns += static(settings.MEDIA_URL,
