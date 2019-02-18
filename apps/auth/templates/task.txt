@@ -1,0 +1,7 @@
+Hi {{ name }}
+    {% if task_new %}
+    Congratulations,
+    A new {{ task_title}} task has been assigned to you of the {{ workflow_name }} workflow.
+    {% else %}
+    {{ task_title}} task of the {{ workflow_name }} workflow has been updated.
+    {% endif %}

@@ -41,15 +41,20 @@ class WorkflowSerializer(serializers.ModelSerializer):
         accessors = validated_data.pop('accessors')
         employee = self.context['request'].user.active_employee
         workflow = Workflow.objects.create(creator=employee, **validated_data)
+        workflow.send_mail(is_updated=False)
+
         if tasks:
             prev_task = None
             for task in tasks:
                 prev_task = Task.objects.create(
                     workflow=workflow, parent_task=prev_task, **task)
+                prev_task.send_mail(is_new=True)
 
         if accessors:
             for accessor in accessors:
-                WorkflowAccess.objects.create(workflow=workflow, **accessor)
+                instance = WorkflowAccess.objects.create(
+                    workflow=workflow, **accessor)
+                instance.send_mail(is_updated=False)
 
         return workflow
 

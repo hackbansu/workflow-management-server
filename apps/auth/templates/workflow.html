@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta http-equiv="X-UA-Compatible" content="ie=edge" />
+		<title>Workflow Update</title>
+	</head>
+	<body>
+		<header>
+			<h1>{{ workflow_name }} Workflow
+          {% if is_updated %}
+            Updated
+          {% elif is_creator %}
+              Created
+          {% else %}
+              Shared
+          {% endif %}
+      </h1>
+		</header>
+		<main>
+			<p>Hi {{ name }}</p>
+			<p>
+        Congratulations,
+        {{ workflow_name }} workflow
+        {% if is_updated %}
+          has been updated.
+        {% elif is_creator %}
+          is created. Cheers.
+        {% else %}
+          is shared with you. You have read {{ write_permission }} permission(s).
+        {% endif %}
+			</p>
+		</main>
+	</body>
+</html>

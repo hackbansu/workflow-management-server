@@ -1,0 +1,3 @@
+Hi {{ name }}
+    Congratulations,
+    You have created a new workflow, {{ workflow_name }}. You have read and write permissions to this workflow.
