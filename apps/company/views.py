@@ -181,6 +181,18 @@ class InvitationView(GenericAPIView):
         handle invitation request to activate user, if required reset password.
     '''
     serializer_class = company_serializer.InvitationSerializer
+    permission_classes = (AllowAny,)
+
+    def get_serializer_context(self,):
+        """
+        overrided to provide user_company instance to the serializer.
+        """
+        return {
+            'request': self.request,
+            'format': self.format_kwarg,
+            'view': self,
+            'user_company': self.user_company
+        }
 
     def get_object(self):
         _, user, user_company = filter_invite_token(self.kwargs['token'])
@@ -207,13 +219,10 @@ class InvitationView(GenericAPIView):
 
     def patch(self, request, token):
         user, user_company = self.get_object()
+        self.user_company = user_company
         serilizer = self.get_serializer(
             data=request.data,
             instance=user,
-            context={
-                'request': request,
-                'user_company': user_company
-            }
         )
 
         serilizer.is_valid(raise_exception=True)
