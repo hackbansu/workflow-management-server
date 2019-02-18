@@ -150,7 +150,8 @@ class UserCompany(BaseModel):
         ]
 
     def __unicode__(self):
-        return '{user}-#-{company}'.format(
+        return '{id}-#-{user}-#-{company}'.format(
+            id=self.id,
             user=self.user_id,
             company=self.company_id
         )
