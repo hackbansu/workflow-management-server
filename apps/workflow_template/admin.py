@@ -10,7 +10,7 @@ class WorkflowTemplateAdmin(admin.ModelAdmin):
     '''
     workflow template admin to be used with django admin app.
     '''
-    list_display = ('id', 'template', 'thumbnail')
+    list_display = ('id', 'name', 'structure', 'thumbnail')
 
 
 admin.site.register(WorkflowTemplate, WorkflowTemplateAdmin)

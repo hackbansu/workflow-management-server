@@ -23,7 +23,7 @@ def thumbnail_dir(_, filename):
 
 class WorkflowTemplate(models.Model):
     name = CICharField(max_length=100, unique=True)
-    template = JSONField()
+    structure = JSONField()
     thumbnail = models.ImageField(
         upload_to=thumbnail_dir,
         blank=True,

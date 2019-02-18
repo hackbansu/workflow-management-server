@@ -10,4 +10,5 @@ class WorkflowTemplateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = WorkflowTemplate
-        read_only_fields = ('name', 'template', 'thumbnail')
+        fields = ('id', 'name', 'structure', 'thumbnail')
+        read_only_fields = ('id', 'name', 'structure', 'thumbnail')
