@@ -5,5 +5,6 @@ from rest_framework import routers
 from apps.workflow import views as workflow_views
 
 router = routers.SimpleRouter()
+router.register('workflow', workflow_views.WorkflowView)
 
 urlpatterns = router.urls

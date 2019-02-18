@@ -8,17 +8,23 @@ from django.utils import timezone
 from rest_framework import response, status, viewsets, mixins
 
 from apps.common import constant as common_constant
-from apps.company import serializers as company_serializer
+from apps.company.models import Company, UserCompany
 from apps.company.permissions import (
     IsActiveCompanyEmployee,
     IsCompanyAdmin
 )
-from apps.workflows.models import Workflow, Task, WorkflowAccess
+from apps.workflow import serializers as workflow_serializers
+from apps.workflow.models import Workflow, Task, WorkflowAccess
 
 User = get_user_model()
 
 
-class WorkflowView(mixins.CreateModelMixin, viewsets.GenericViewSet):
-    queryset = None
+class WorkflowView(viewsets.ModelViewSet):
+    queryset = Workflow.objects.all()
     permission_classes = (IsActiveCompanyEmployee, IsCompanyAdmin)
-    # serializer_class =
+    serializer_class = workflow_serializers.WorkflowSerializer
+
+    def get_queryset(self):
+        user = self.request.user.active_employee
+        employees = Company.objects.filter()
+        self.queryset.filter()

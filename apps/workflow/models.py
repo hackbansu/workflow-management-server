@@ -9,6 +9,7 @@ from django.db import models
 
 from apps.common import constant as common_constant
 from apps.workflow_template.models import WorkflowTemplate
+from apps.company.models import UserCompany
 
 User = get_user_model()
 
@@ -19,7 +20,7 @@ class Workflow(models.Model):
     '''
     template = models.ForeignKey(to=WorkflowTemplate, on_delete=models.PROTECT)
     name = CICharField(max_length=256)
-    creator = models.ForeignKey(to=User, on_delete=models.PROTECT)
+    creator = models.ForeignKey(to=UserCompany, on_delete=models.PROTECT)
     start_at = models.DateTimeField()
     complete_at = models.DateTimeField(
         null=True,
@@ -41,17 +42,17 @@ class Task(models.Model):
     '''
     Tasks in workflows.
     '''
-    workflow = models.ForeignKey(to=Workflow, on_delete=models.CASCADE)
+    workflow = models.ForeignKey(to=Workflow, on_delete=models.CASCADE, related_name='tasks')
     title = CICharField(max_length=256)
     description = models.TextField(blank=True, default='')
     parent_task = models.ForeignKey(
         'self',
-        on_delete=models.PROTECT,
+        on_delete=models.SET_NULL,
         null=True,
         related_name='child'
     )
     assignee = models.ForeignKey(
-        User,
+        UserCompany,
         on_delete=models.PROTECT,
         related_name='tasks'
     )
@@ -79,8 +80,8 @@ class WorkflowAccess(models.Model):
     '''
     Workflow accees permissions.
     '''
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    workflow = models.ForeignKey(Workflow, on_delete=models.CASCADE)
+    employee = models.ForeignKey(UserCompany, on_delete=models.CASCADE, related_name='shared_workflows')
+    workflow = models.ForeignKey(Workflow, on_delete=models.CASCADE, related_name='accessors')
     permission = models.PositiveIntegerField(
         choices=(choice for choice in zip(
             common_constant.PERMISSION,
@@ -90,11 +91,11 @@ class WorkflowAccess(models.Model):
     )
 
     class Meta:
-        unique_together = ('user', 'workflow')
+        unique_together = ('employee', 'workflow')
 
     def __unicode__(self):
-        return '{user_id}-#-{workflow_id}-#-{permission}'.format(
-            user_id=self.user_id,
+        return '{employee_id}-#-{workflow_id}-#-{permission}'.format(
+            employee_id=self.employee_id,
             workflow_id=self.workflow_id,
             permission=self.permission
         )
