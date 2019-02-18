@@ -7,15 +7,24 @@ from apps.workflow.models import Workflow, Task, WorkflowAccess
 
 
 class WorkflowAdmin(admin.ModelAdmin):
-    list_display = ('name', 'template', 'creator', 'start_at', 'complete_at', 'duration')
+    '''
+    workflow admin to be used with django admin app.
+    '''
+    list_display = ('id', 'template', 'name', 'creator', 'start_at', 'complete_at', 'duration')
 
 
 class TaskAdmin(admin.ModelAdmin):
-    list_display = tuple(field.name for field in Task._meta.get_fields())
+    '''
+    Task admin to be used with django admin app.
+    '''
+    list_display = ('id', 'title', 'description', 'workflow', 'parent_task', 'assignee', 'status')
 
 
 class WorkflowAccessAdmin(admin.ModelAdmin):
-    list_display = tuple(field.name for field in WorkflowAccess._meta.get_fields())
+    '''
+    Workflow access admin to be used with django admin app.
+    '''
+    list_display = ('id', 'user', 'workflow', 'permission')
 
 
 admin.site.register(Workflow, WorkflowAdmin)
