@@ -129,9 +129,15 @@ class EmployeesView(ListModelMixin, GenericViewSet):
     queryset = UserCompany.objects.all()
 
     def get_queryset(self):
-        return self.queryset.filter(
-            company=self.request.user.company,
+        employee = self.request.user.active_employee
+        qs = self.queryset.filter(
+            company=employee.company
         )
+        if not employee.is_admin:
+            return qs.filter(
+                status=common_constant.USER_STATUS.ACTIVE
+            )
+        return qs
 
 
 class InviteEmployeeView(GenericViewSet):

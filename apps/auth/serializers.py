@@ -214,3 +214,10 @@ class ResetPasswordSerializer(UpdateUserSerializer):
                 'write_only': True
             }
         }
+
+
+class UserBasicDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('id', 'email', 'name')
+        read_only_fields = ('id', 'email', 'name')

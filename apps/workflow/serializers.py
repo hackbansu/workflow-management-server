@@ -1,12 +1,25 @@
+# -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from django.contrib.auth import get_user_model
-from django.db.models import Q
 from rest_framework import serializers
-from rest_framework.generics import get_object_or_404
 
-from apps.common import constant as common_constant
-
-User = get_user_model()
+from apps.auth.serializers import UserBasicDetailSerializer
+from apps.workflow.models import Workflow
 
 
+class WorkflowSerializer(serializers.ModelSerializer):
+    creator = UserBasicDetailSerializer()
+
+    def create(self, validated_data):
+        pass
+
+    def update(self, instance, validated_data):
+        pass
+
+    class Meta:
+        model = Workflow
+        fields = (
+            'template', 'name', 'creator', 'start_at',
+            'complete_at', 'duration', 'tasks'
+        )
+        read_only_fields = ('creator',)
