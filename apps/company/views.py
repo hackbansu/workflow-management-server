@@ -10,6 +10,7 @@ from rest_framework.decorators import action
 from rest_framework.mixins import CreateModelMixin, UpdateModelMixin, DestroyModelMixin, ListModelMixin, RetrieveModelMixin
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.generics import GenericAPIView
+from rest_framework.permissions import AllowAny
 
 from apps.common import constant as common_constant
 from apps.company import permissions as company_permissions
@@ -41,7 +42,7 @@ class UpdateCompanyView(UpdateModelMixin, GenericViewSet):
     Update Company details.
     '''
     queryset = Company.objects.all()
-    permission_classes = [IsCompanyAdmin]
+    permission_classes = (IsCompanyAdmin,)
     serializer_class = company_serializer.CompanySerializer
 
 
@@ -52,6 +53,7 @@ class CreateCompanyUserView(CreateModelMixin, CompanyBaseClassView):
     '''
     serializer_class = company_serializer.UserCompanySignupSerializer
     authentication_classes = []
+    permission_classes = (AllowAny,)
 
 
 class CreateCompanyView(CompanyBaseClassView):
@@ -60,7 +62,7 @@ class CreateCompanyView(CompanyBaseClassView):
         Create company for old user
     '''
     serializer_class = company_serializer.UserCompanySerializer
-    permission_classes = [IsInactiveEmployee]
+    permission_classes = (IsInactiveEmployee,)
 
     @action(detail=False, methods=['post'], url_path='new-company',)
     def new_company(self, request):
@@ -185,6 +187,18 @@ class InvitationView(GenericAPIView):
         handle invitation request to activate user, if required reset password.
     '''
     serializer_class = company_serializer.InvitationSerializer
+    permission_classes = (AllowAny,)
+
+    def get_serializer_context(self,):
+        """
+        overrided to provide user_company instance to the serializer.
+        """
+        return {
+            'request': self.request,
+            'format': self.format_kwarg,
+            'view': self,
+            'user_company': self.user_company
+        }
 
     def get_object(self):
         _, user, user_company = filter_invite_token(self.kwargs['token'])
@@ -211,13 +225,10 @@ class InvitationView(GenericAPIView):
 
     def patch(self, request, token):
         user, user_company = self.get_object()
+        self.user_company = user_company
         serilizer = self.get_serializer(
             data=request.data,
             instance=user,
-            context={
-                'request': request,
-                'user_company': user_company
-            }
         )
 
         serilizer.is_valid(raise_exception=True)

@@ -26,6 +26,7 @@ class LinkAdmin(admin.ModelAdmin):
     '''
     list_display = ('id', 'company', 'link_type', 'url')
 
+
 class UserCompanyCsvAdmin(admin.ModelAdmin):
     '''
     UserCompanyCsvAdmin to be use with django admin app.

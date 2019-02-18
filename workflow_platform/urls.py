@@ -25,6 +25,7 @@ from drf_yasg import openapi
 
 from apps.auth.urls import urlpatterns as auth_urls
 from apps.company.urls import urlpatterns as company_urls
+from apps.workflow_template.urls import urlpatterns as workflow_template_urls
 
 
 schema_view = get_schema_view(
@@ -49,7 +50,8 @@ urlpatterns = [
 
     url(r'^api/', include([url for url_patterns in [
         auth_urls,
-        company_urls
+        company_urls,
+        workflow_template_urls
     ] for url in url_patterns])),
 ]
 
