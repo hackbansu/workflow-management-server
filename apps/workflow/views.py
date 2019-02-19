@@ -18,14 +18,14 @@ from apps.company.permissions import (
 )
 from apps.workflow import serializers as workflow_serializers
 from apps.workflow.models import Workflow, Task, WorkflowAccess
-from apps.workflow.permissions import WorkflowAccessPermission as WorkflowAccessPermission
+from apps.workflow import permissions as workflow_permissions
 
 User = get_user_model()
 
 
 class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, UpdateModelMixin, GenericViewSet):
     queryset = Workflow.objects.all()
-    permission_classes = (WorkflowAccessPermission,)
+    permission_classes = (workflow_permissions.WorkflowAccessPermission,)
     serializer_class = workflow_serializers.WorkflowSerializer
 
     def update(self, request, *args, **kwargs):
@@ -36,19 +36,21 @@ class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, Upd
         employee = self.request.user.active_employee
 
         if(employee.is_admin):
-            return self.queryset.filter(creator__company=employee.company)
+            return self.queryset.filter(creator__company=employee.company).distinct()
 
         return self.queryset.filter(Q(tasks__assignee=employee) | Q(accessors__employee=employee)).distinct()
 
 
 class TaskULView(UpdateModelMixin, ListModelMixin, GenericViewSet):
     queryset = Task.objects.all()
-    permission_classes = ()
+    permission_classes = (workflow_permissions.TaskAccessPermission,)
+    serializer_class = workflow_serializers.TaskSerializer
 
     def get_queryset(self):
         employee = self.request.user.active_employee
 
+        # admin can see all tasks of the company
         if(employee.is_admin):
-            return self.queryset.filter(creator__company=employee.company)
+            return self.queryset.filter(workflow__creator__company=employee.company).distinct()
 
-        return self.queryset.filter(Q(tasks__assignee=employee) | Q(accessors__employee=employee)).distinct()
+        return self.queryset.filter(Q(assignee=employee) | Q(workflow__accessors__employee=employee)).distinct()

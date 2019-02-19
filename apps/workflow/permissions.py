@@ -39,18 +39,21 @@ class TaskAccessPermission(company_permissions.IsActiveCompanyEmployee):
 
     def has_permission(self, request, view):
         '''
-        Allows admin to create workflow, admin, accessors and assignees to list and retrieve workflow.
+        Allows company employees to view their tasks.
         '''
-        res = super(WorkflowAccessPermission, self).has_permission(request, view)
+        res = super(TaskAccessPermission, self).has_permission(request, view)
 
         if view.action == 'list':
             return res
 
-        return res
+        return False
 
     def has_object_permission(self, request, view, obj):
         employee_record = request.user.active_employee
         if view.action == 'update':
-            return employee_record.is_admin or obj.accessors.filter(employee=employee_record, permission=common_constant.PERMISSION.READ_WRITE).exists()
+            # checking if the employee has Write access to the workflow of the task.
+            retVal = obj.workflow.accessors.filter(employee=employee_record, permission=common_constant.PERMISSION.READ_WRITE).exists()
+            retVal = employee_record.is_admin or obj.assignee == employee_record or retVal
+            return retVal
 
-        return True
+        return False
