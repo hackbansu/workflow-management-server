@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 from rest_framework import serializers
 
+from apps.company.models import UserCompany
 from apps.company.serializers import UserCompanySerializer
 from apps.workflow.models import Workflow, Task, WorkflowAccess
 from apps.workflow_template.models import WorkflowTemplate
@@ -18,10 +19,10 @@ class TaskSerializer(serializers.ModelSerializer):
 
 
 class TaskUpdateSerializer(TaskSerializer):
-    id = serializers.IntegerField()
+    task_id = serializers.PrimaryKeyRelatedField(queryset=Task.objects.all(), write_only=True)
 
     class Meta(TaskSerializer.Meta):
-        read_only_fields = ('workflow', 'parent_task', 'completed_at', 'status')
+        fields = TaskSerializer.Meta.fields + ('task_id',)
 
 
 class WorkflowAccessSerializer(serializers.ModelSerializer):
@@ -57,8 +58,7 @@ class WorkflowSerializer(serializers.ModelSerializer):
 
         if accessors:
             for accessor in accessors:
-                instance = WorkflowAccess.objects.create(
-                    workflow=workflow, **accessor)
+                instance = WorkflowAccess.objects.create(workflow=workflow, **accessor)
                 instance.send_mail(is_updated=False)
 
         return workflow
@@ -72,30 +72,44 @@ class WorkflowSerializer(serializers.ModelSerializer):
 
 class WorkflowUpdateSerializer(WorkflowSerializer):
     '''
-    Serializer for updating workflow and its tasks. Accessors are not updated via this.
+    Serializer for updating workflow and its tasks. Accessors are not removed via this.
     '''
-
     tasks = TaskUpdateSerializer(many=True)
 
     class Meta(WorkflowSerializer.Meta):
-        read_only_fields = WorkflowSerializer.Meta.read_only_fields + ('accessors',)
+        pass
 
     def update(self, instance, validated_data):
         '''
         override due to nested updates
         '''
         tasks = validated_data.pop('tasks')
+        accessors = validated_data.pop('accessors')
 
-        super(WorkflowUpdateSerializer, self).update(instance, validated_data)
-        
+        instance = super(WorkflowUpdateSerializer, self).update(instance, validated_data)
+
         if tasks:
             for task in tasks:
-                task_id = task.pop('id')
-                task_instance = Task.objects.get(pk=task_id)
+                task_instance = task.pop('task_id')
 
-                # updating the task
-                task_serializer_instance = TaskSerializer(instance=task_instance, data=task)
-                task_serializer_instance.is_valid(raise_exception=True)
-                task_serializer_instance.save()
+                for attr, value in task.items():
+                    setattr(task_instance, attr, value)
+                task_instance.save()
+
+        if accessors:
+            for accessor in accessors:
+                employee = accessor.pop('employee')
+                accessor_instance, created = WorkflowAccess.objects.get_or_create(
+                    workflow=instance,
+                    employee=employee,
+                    defaults={'permission': accessor['permission']}
+                )
+
+                # continue if new accessor is created or the permissions is already correct.
+                if created or accessor_instance.permission == accessor['permission']:
+                    continue
+
+                accessor_instance.permission = accessor['permission']
+                accessor_instance.save()
 
         return instance

@@ -7,7 +7,8 @@ from django.utils import timezone
 from django_filters import rest_framework as filters
 
 from rest_framework import response, status, viewsets, mixins
-from rest_framework.mixins import CreateModelMixin, ListModelMixin, RetrieveModelMixin, UpdateModelMixin
+from rest_framework.mixins import (CreateModelMixin, ListModelMixin, RetrieveModelMixin,
+                                   UpdateModelMixin, DestroyModelMixin)
 from rest_framework.viewsets import GenericViewSet
 
 from apps.common import constant as common_constant
@@ -30,7 +31,7 @@ class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, Upd
 
     def update(self, request, *args, **kwargs):
         self.serializer_class = workflow_serializers.WorkflowUpdateSerializer
-        return super(WorkflowCRLView, self).update(request, *args, **kwargs)
+        return super(WorkflowCRULView, self).update(request, *args, **kwargs)
 
     def get_queryset(self):
         employee = self.request.user.active_employee
@@ -54,3 +55,8 @@ class TaskULView(UpdateModelMixin, ListModelMixin, GenericViewSet):
             return self.queryset.filter(workflow__creator__company=employee.company).distinct()
 
         return self.queryset.filter(Q(assignee=employee) | Q(workflow__accessors__employee=employee)).distinct()
+
+
+# class AccessorsDestroyView(DestroyModelMixin, GenericViewSet):
+    # queryset = WorkflowAccess.objects.all()
+    # permission_classes = (workflow_permissions.WorkflowAccessPermission,)
