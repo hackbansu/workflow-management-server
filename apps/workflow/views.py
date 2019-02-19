@@ -31,7 +31,7 @@ class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, Upd
     def update(self, request, *args, **kwargs):
         self.serializer_class = workflow_serializers.WorkflowUpdateSerializer
         return super(WorkflowCRLView, self).update(request, *args, **kwargs)
-    
+
     def get_queryset(self):
         employee = self.request.user.active_employee
 

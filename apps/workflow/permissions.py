@@ -26,7 +26,7 @@ class WorkflowAccessPermission(company_permissions.IsActiveCompanyEmployee):
 
     def has_object_permission(self, request, view, obj):
         employee_record = request.user.active_employee
-        if view.action == 'update':
+        if view.action == 'partial_update' or view.action == 'update':
             return employee_record.is_admin or obj.accessors.filter(employee=employee_record, permission=common_constant.PERMISSION.READ_WRITE).exists()
 
         return True
@@ -46,14 +46,16 @@ class TaskAccessPermission(company_permissions.IsActiveCompanyEmployee):
         if view.action == 'list':
             return res
 
-        return False
+        return res
 
     def has_object_permission(self, request, view, obj):
         employee_record = request.user.active_employee
-        if view.action == 'update':
+
+        if view.action == 'partial_update' or view.action == 'update':
             # checking if the employee has Write access to the workflow of the task.
             retVal = obj.workflow.accessors.filter(employee=employee_record, permission=common_constant.PERMISSION.READ_WRITE).exists()
             retVal = employee_record.is_admin or obj.assignee == employee_record or retVal
+            print retVal
             return retVal
 
-        return False
+        return True
