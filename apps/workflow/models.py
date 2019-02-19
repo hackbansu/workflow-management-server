@@ -47,7 +47,7 @@ class Workflow(models.Model):
         context = {
             'name': self.creator.user.name,
             'workflow_name': self.name,
-            'write_permission': True,
+            'write_permission': 'write',
             'is_updated': is_updated,
             'is_creator': True
         }
@@ -152,7 +152,7 @@ class WorkflowAccess(models.Model):
         context = {
             'name': self.employee.user.name,
             'workflow_name': self.workflow.name,
-            'write_permission': self.permission == common_constant.PERMISSION.READ_WRITE,
+            'write_permission': 'write' if self.permission == common_constant.PERMISSION.READ_WRITE else '',
             'is_updated': is_updated,
             'is_creator': False
         }
