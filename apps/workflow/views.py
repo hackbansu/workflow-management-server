@@ -39,3 +39,16 @@ class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, Upd
             return self.queryset.filter(creator__company=employee.company)
 
         return self.queryset.filter(Q(tasks__assignee=employee) | Q(accessors__employee=employee)).distinct()
+
+
+class TaskULView(UpdateModelMixin, ListModelMixin, GenericViewSet):
+    queryset = Task.objects.all()
+    permission_classes = ()
+
+    def get_queryset(self):
+        employee = self.request.user.active_employee
+
+        if(employee.is_admin):
+            return self.queryset.filter(creator__company=employee.company)
+
+        return self.queryset.filter(Q(tasks__assignee=employee) | Q(accessors__employee=employee)).distinct()
