@@ -7,7 +7,7 @@ from django.utils import timezone
 from django_filters import rest_framework as filters
 
 from rest_framework import response, status, viewsets, mixins
-from rest_framework.mixins import CreateModelMixin, ListModelMixin, RetrieveModelMixin
+from rest_framework.mixins import CreateModelMixin, ListModelMixin, RetrieveModelMixin, UpdateModelMixin
 from rest_framework.viewsets import GenericViewSet
 
 from apps.common import constant as common_constant
@@ -23,11 +23,15 @@ from apps.workflow.permissions import WorkflowAccessPermission as WorkflowAccess
 User = get_user_model()
 
 
-class WorkflowCRLView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, GenericViewSet):
+class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, UpdateModelMixin, GenericViewSet):
     queryset = Workflow.objects.all()
     permission_classes = (WorkflowAccessPermission,)
     serializer_class = workflow_serializers.WorkflowSerializer
 
+    def update(self, request, *args, **kwargs):
+        self.serializer_class = workflow_serializers.WorkflowUpdateSerializer
+        return super(WorkflowCRLView, self).update(request, *args, **kwargs)
+    
     def get_queryset(self):
         employee = self.request.user.active_employee
 

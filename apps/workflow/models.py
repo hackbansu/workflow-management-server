@@ -65,8 +65,7 @@ class Task(models.Model):
     '''
     Tasks in workflows.
     '''
-    workflow = models.ForeignKey(
-        to=Workflow, on_delete=models.CASCADE, related_name='tasks')
+    workflow = models.ForeignKey(to=Workflow, on_delete=models.CASCADE, related_name='tasks')
     title = CICharField(max_length=256)
     description = models.TextField(blank=True, default='')
     parent_task = models.ForeignKey(
@@ -123,10 +122,8 @@ class WorkflowAccess(models.Model):
     '''
     Workflow accees permissions.
     '''
-    employee = models.ForeignKey(
-        UserCompany, on_delete=models.CASCADE, related_name='shared_workflows')
-    workflow = models.ForeignKey(
-        Workflow, on_delete=models.CASCADE, related_name='accessors')
+    employee = models.ForeignKey(UserCompany, on_delete=models.CASCADE, related_name='shared_workflows')
+    workflow = models.ForeignKey(Workflow, on_delete=models.CASCADE, related_name='accessors')
     permission = models.PositiveIntegerField(
         choices=(choice for choice in zip(
             common_constant.PERMISSION,

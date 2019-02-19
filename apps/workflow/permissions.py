@@ -1,5 +1,6 @@
 from rest_framework.permissions import IsAuthenticated
 
+from apps.common import constant as common_constant
 from apps.company import permissions as company_permissions
 from apps.workflow.models import Workflow, WorkflowAccess
 
@@ -22,3 +23,10 @@ class WorkflowAccessPermission(company_permissions.IsActiveCompanyEmployee):
             return res
 
         return res
+
+    def has_object_permission(self, request, view, obj):
+        employee_record = request.user.active_employee
+        if view.action == 'update':
+            return employee_record.is_admin or obj.accessors.filter(employee=employee_record, permission=common_constant.PERMISSION.READ_WRITE).exists()
+
+        return True

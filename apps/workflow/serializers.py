@@ -17,6 +17,13 @@ class TaskSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'workflow', 'parent_task', 'completed_at', 'status')
 
 
+class TaskUpdateSerializer(TaskSerializer):
+    id = serializers.IntegerField()
+
+    class Meta(TaskSerializer.Meta):
+        read_only_fields = ('workflow', 'parent_task', 'completed_at', 'status')
+
+
 class WorkflowAccessSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkflowAccess
@@ -45,8 +52,7 @@ class WorkflowSerializer(serializers.ModelSerializer):
         if tasks:
             prev_task = None
             for task in tasks:
-                prev_task = Task.objects.create(
-                    workflow=workflow, parent_task=prev_task, **task)
+                prev_task = Task.objects.create(workflow=workflow, parent_task=prev_task, **task)
                 prev_task.send_mail(is_new=True)
 
         if accessors:
@@ -57,11 +63,39 @@ class WorkflowSerializer(serializers.ModelSerializer):
 
         return workflow
 
-    def update(self, instance, validated_data):
-        pass
-
     class Meta:
         model = Workflow
         fields = ('id', 'template', 'name', 'creator', 'start_at',
                   'complete_at', 'duration', 'tasks', 'accessors')
         read_only_fields = ('id', 'creator', 'complete_at')
+
+
+class WorkflowUpdateSerializer(WorkflowSerializer):
+    '''
+    Serializer for updating workflow and its tasks. Accessors are not updated via this.
+    '''
+
+    tasks = TaskUpdateSerializer(many=True)
+
+    class Meta(WorkflowSerializer.Meta):
+        read_only_fields = WorkflowSerializer.Meta.read_only_fields + ('accessors',)
+
+    def update(self, instance, validated_data):
+        '''
+        override due to nested updates
+        '''
+        tasks = validated_data.pop('tasks')
+
+        super(WorkflowUpdateSerializer, self).update(instance, validated_data)
+        
+        if tasks:
+            for task in tasks:
+                task_id = task.pop('id')
+                task_instance = Task.objects.get(pk=task_id)
+
+                # updating the task
+                task_serializer_instance = TaskSerializer(instance=task_instance, data=task)
+                task_serializer_instance.is_valid(raise_exception=True)
+                task_serializer_instance.save()
+
+        return instance
