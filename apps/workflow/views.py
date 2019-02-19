@@ -42,10 +42,15 @@ class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, Upd
         return self.queryset.filter(Q(tasks__assignee=employee) | Q(accessors__employee=employee)).distinct()
 
 
+class AccessorsDestroyView(DestroyModelMixin, GenericViewSet):
+    queryset = WorkflowAccess.objects.all()
+    permission_classes = (IsActiveCompanyEmployee, IsCompanyAdmin)
+
+
 class TaskULView(UpdateModelMixin, ListModelMixin, GenericViewSet):
     queryset = Task.objects.all()
     permission_classes = (workflow_permissions.TaskAccessPermission,)
-    serializer_class = workflow_serializers.TaskSerializer
+    serializer_class = workflow_serializers.TaskUpdateSerializer
 
     def get_queryset(self):
         employee = self.request.user.active_employee
@@ -55,8 +60,3 @@ class TaskULView(UpdateModelMixin, ListModelMixin, GenericViewSet):
             return self.queryset.filter(workflow__creator__company=employee.company).distinct()
 
         return self.queryset.filter(Q(assignee=employee) | Q(workflow__accessors__employee=employee)).distinct()
-
-
-# class AccessorsDestroyView(DestroyModelMixin, GenericViewSet):
-    # queryset = WorkflowAccess.objects.all()
-    # permission_classes = (workflow_permissions.WorkflowAccessPermission,)

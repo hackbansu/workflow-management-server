@@ -55,7 +55,6 @@ class TaskAccessPermission(company_permissions.IsActiveCompanyEmployee):
             # checking if the employee has Write access to the workflow of the task.
             retVal = obj.workflow.accessors.filter(employee=employee_record, permission=common_constant.PERMISSION.READ_WRITE).exists()
             retVal = employee_record.is_admin or obj.assignee == employee_record or retVal
-            print retVal
             return retVal
 
         return True
