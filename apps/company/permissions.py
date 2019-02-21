@@ -35,8 +35,7 @@ class IsActiveCompanyAdmin(IsAuthenticated):
     '''
 
     def has_permission(self, request, view):
-        isLogin = super(IsActiveCompanyAdmin,
-                        self).has_permission(request, view)
+        isLogin = super(IsActiveCompanyAdmin, self).has_permission(request, view)
         return isLogin and request.user.active_employee.is_admin
 
 

@@ -12,25 +12,46 @@
           {% if is_updated %}
             Updated
           {% elif is_creator %}
-              Created
+            Created
+          {% elif is_shared %}
+            Shared
           {% else %}
-              Shared
+            Started
           {% endif %}
       </h1>
 		</header>
 		<main>
 			<p>Hi {{ name }}</p>
-			<p>
-        Congratulations,
+			<div>
+        <p>Congratulations,</p>
+        <p>
         {{ workflow_name }} workflow
         {% if is_updated %}
           has been updated.
         {% elif is_creator %}
           is created. Cheers.
+        {% elif is_shared %}
+          is shared with you. You have read
+          {% if write_permission %}
+            and write
+          {% endif %}
+          permission(s).
         {% else %}
-          is shared with you. You have read {{ write_permission }} permission(s).
+            is stared.
         {% endif %}
-			</p>
+        </p>
+
+        <p>
+        {% if task_list %}
+          You have been assigned the following tasks.
+          <ol>
+          {% for task in task_list %}
+            <li>{{task}}</li>
+          {% endfor %}
+          </ol>
+        {% endif %}
+        </p>
+        </div>
 		</main>
 	</body>
 </html>

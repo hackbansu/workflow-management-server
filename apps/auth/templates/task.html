@@ -1,25 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<meta http-equiv="X-UA-Compatible" content="ie=edge" />
-		<title>Task Update</title>
-	</head>
-	<body>
-		<header>
-			<h1>{{ task_title }}</h1>
-		</header>
-		<main>
-			<p>Hi {{ name }}</p>
-			<p>
-        {% if is_new %}
-        Congratulations,
-        A new {{ task_title}} task has been assigned to you of the {{ workflow_name }} workflow.
-        {% else %}
-        {{ task_title}} task of the {{ workflow_name }} workflow has been updated.
-        {% endif %}
-			</p>
-		</main>
-	</body>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+        <title>Task Update</title>
+    </head>
+    <body>
+        <header>
+            <h1>{{ task_title }}</h1>
+        </header>
+        <main>
+            <p>Hi {{ name }}</p>
+            <p>
+                {{ task_title }} task of the {{ workflow_name }} workflow has been updated.
+            </p>
+        </main>
+    </body>
 </html>
