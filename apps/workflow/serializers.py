@@ -108,6 +108,25 @@ class WorkflowCreateSerializer(WorkflowBaseSerializer):
     class Meta(WorkflowBaseSerializer.Meta):
         fields = WorkflowBaseSerializer.Meta.fields + ('tasks', 'accessors')
 
+    def validate(self, data):
+        employee = self.context['request'].user.active_employee
+
+        # validate that the assignees belong to the same company
+        tasks = data.get('tasks', None)
+        if tasks:
+            for task in tasks:
+                if not task['assignee'].company == employee.company:
+                    raise serializers.ValidationError('Assignees must be of the same company')
+
+        # validate that the accessors are of the same company
+        accessors = data.get('accessors', None)
+        if accessors:
+            for accessor in accessors:
+                if not accessor['employee'].company == employee.company:
+                    raise serializers.ValidationError('Accessor must be of the same company')
+
+        return data
+
     def create(self, validated_data):
         '''
         override due to nested writes
