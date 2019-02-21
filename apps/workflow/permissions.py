@@ -102,8 +102,7 @@ class AccessorAccessPermission(company_permissions.IsActiveCompanyEmployee, hasW
         # check if workflow exists and is of the same company as the user
         workflow_instance = get_object_or_404(Workflow.objects.all(), pk=view.kwargs['workflow_id'])
         res = super(AccessorAccessPermission, self).has_permission(request, view)
-        res = res and super(AccessorAccessPermission, self).has_object_permission(request,
-                                                                                  view, workflow_instance)
+        res = res and super(AccessorAccessPermission, self).has_object_permission(request, view, workflow_instance)
 
         return res
 

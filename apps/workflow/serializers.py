@@ -25,7 +25,8 @@ class TaskUpdateSerializer(TaskBaseSerializer):
 
     def validate(self, data):
         """
-        don't update assignee if user is only assignee and not admin or write accessor
+        Don't update assignee if user is only assignee and not admin or write accessor
+        Also check new assignee is of the same company
         """
         employee = self.context['request'].user.active_employee
         instance = self.instance
@@ -37,6 +38,9 @@ class TaskUpdateSerializer(TaskBaseSerializer):
         ).exists())
         if isOnlyAssignee:
             raise serializers.ValidationError('Assignee does not have permissions to update assignee of the task.')
+
+        if data.get('assignee', None) not data['assignee'].company == employee.company:
+            raise serializers.ValidationError('New assignee must be of the same company.')
 
         return data
 
@@ -62,8 +66,6 @@ class WorkflowAccessCreateSerializer(WorkflowAccessBaseSerializer):
         """
         checks that admin, employee and workflow belongs to the same company.
         """
-        if not data['workflow'].creator.company == self.context['request'].user.company:
-            raise serializers.ValidationError('workflow does not belong to your company')
         if not data['employee'].company == data['workflow'].creator.company:
             raise serializers.ValidationError('Employee must be of the same company')
         return data
@@ -72,7 +74,6 @@ class WorkflowAccessCreateSerializer(WorkflowAccessBaseSerializer):
         '''
         overrided to send mail after creating new accessor.
         '''
-
         instance = super(WorkflowAccessCreateSerializer, self).create(validated_data)
         instance.send_mail()
         return instance
