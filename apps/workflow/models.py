@@ -44,6 +44,15 @@ class Workflow(models.Model):
         '''
         send workflow created/shared/updated mail.
         '''
+        if not associated_people_details:
+            associated_people_details = {}
+            associated_people_details[self.creator_id] = {'employee': self.creator}
+
+            for accessor in self.accessors.all():
+                associated_people_details[accessor.employee_id] = {'employee': accessor.employee}
+            for task in self.tasks.all():
+                associated_people_details[task.assignee_id] = {'employee': task.assignee}
+
         for key, person in associated_people_details.iteritems():
             context = {
                 'is_updated': is_updated,

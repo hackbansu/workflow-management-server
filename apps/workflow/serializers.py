@@ -173,14 +173,6 @@ class WorkflowUpdateSerializer(WorkflowBaseSerializer):
         override due to sending mails on update
         '''
         instance = super(WorkflowUpdateSerializer, self).update(instance, validated_data)
-
-        people_assiciated = {}
-        people_assiciated[instance.creator_id] = {'employee': instance.creator}
-
-        for accessor in instance.accessors.all():
-            people_assiciated[accessor.employee_id] = {'employee': accessor.employee}
-        for task in instance.tasks.all():
-            people_assiciated[task.assignee_id] = {'employee': task.assignee}
-        instance.send_mail(people_assiciated, is_updated=True)
+        instance.send_mail(associated_people_details=None, is_updated=True)
 
         return instance
