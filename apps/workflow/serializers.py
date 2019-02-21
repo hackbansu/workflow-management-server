@@ -23,17 +23,24 @@ class TaskUpdateSerializer(TaskBaseSerializer):
     class Meta(TaskBaseSerializer.Meta):
         pass
 
-    def update(self, instance, validated_data):
+    def validate(self, data):
+        """
+        don't update assignee if user is only assignee and not admin or write accessor
+        """
         employee = self.context['request'].user.active_employee
-        # don't update assignee if user is only assignee and not admin or write accessor
+        instance = self.instance
+
         isOnlyAssignee = instance.assignee == employee and not employee.is_admin
         isOnlyAssignee = isOnlyAssignee and (not employee.shared_workflows.filter(
-            workflow=instance,
+            workflow=instance.workflow,
             permission=common_constant.PERMISSION.READ_WRITE
         ).exists())
         if isOnlyAssignee:
-            validated_data.pop('assignee', None)
+            raise serializers.ValidationError('Assignee does not have permissions to update assignee of the task.')
 
+        return data
+
+    def update(self, instance, validated_data):
         instance = super(TaskUpdateSerializer, self).update(instance, validated_data)
         instance.send_mail()
 
@@ -169,8 +176,6 @@ class WorkflowUpdateSerializer(WorkflowBaseSerializer):
 
         people_assiciated = {}
         people_assiciated[instance.creator_id] = {'employee': instance.creator}
-
-        print instance.tasks
 
         for accessor in instance.accessors.all():
             people_assiciated[accessor.employee_id] = {'employee': accessor.employee}

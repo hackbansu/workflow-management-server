@@ -25,9 +25,10 @@ class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, Upd
     permission_classes = (workflow_permissions.WorkflowAccessPermission,)
     serializer_class = workflow_serializers.WorkflowCreateSerializer
 
-    def update(self, request, *args, **kwargs):
-        self.serializer_class = workflow_serializers.WorkflowUpdateSerializer
-        return super(WorkflowCRULView, self).update(request, *args, **kwargs)
+    def get_serializer_class(self):
+        if self.request.method == 'PATCH' or self.request.method == 'PUT':
+            return workflow_serializers.WorkflowUpdateSerializer
+        return self.serializer_class
 
     def get_queryset(self):
         employee = self.request.user.active_employee
@@ -43,9 +44,10 @@ class AccessorsCUDView(CreateModelMixin, UpdateModelMixin, DestroyModelMixin, Ge
     permission_classes = (workflow_permissions.AccessorAccessPermission,)
     serializer_class = workflow_serializers.WorkflowAccessCreateSerializer
 
-    def update(self, request, *args, **kwargs):
-        self.serializer_class = workflow_serializers.WorkflowAccessUpdateSerializer
-        return super(AccessorsCUDView, self).update(request, *args, **kwargs)
+    def get_serializer_class(self):
+        if self.request.method == 'PATCH' or self.request.method == 'PUT':
+            return workflow_serializers.WorkflowAccessUpdateSerializer
+        return self.serializer_class
 
 
 class TaskULView(RetrieveModelMixin, UpdateModelMixin, ListModelMixin, GenericViewSet):
