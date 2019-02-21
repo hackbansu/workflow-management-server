@@ -31,6 +31,24 @@ class CompanySerializer(serializers.ModelSerializer):
     links = LinkSerializer(many=True, required=False)
     logo_url = serializers.URLField(source='logo', read_only=True)
 
+    class Meta:
+        model = Company
+        fields = ('id', 'name', 'address', 'city', 'state', 'logo', 'logo_url', 'status', 'links')
+        extra_kwargs = {
+            'id': {
+                'read_only': True,
+                'help_text': 'unique company id'
+            },
+            'logo': {
+                'write_only': True,
+                'help_text': 'company logo'
+            },
+            'status': {
+                'read_only': True
+            },
+
+        }
+
     def get_status(self, obj):
         '''
         return status equivalent.
@@ -86,33 +104,30 @@ class CompanySerializer(serializers.ModelSerializer):
 
         return super(CompanySerializer, self).update(instance, validated_data)
 
-    class Meta:
-        model = Company
-        fields = (
-            'id', 'name', 'address', 'city',
-            'state', 'logo', 'logo_url', 'status', 'links'
-        )
-        extra_kwargs = {
-            'id': {
-                'read_only': True,
-                'help_text': 'unique company id'
-            },
-            'logo': {
-                'write_only': True,
-                'help_text': 'company logo'
-            },
-            'status': {
-                'read_only': True
-            },
-
-        }
-
 
 class UserCompanySerializer(serializers.ModelSerializer):
     '''
     Create company with existing user.
     '''
     company = CompanySerializer()
+
+    class Meta:
+        model = UserCompany
+        fields = (
+            'company', 'is_admin',
+            'designation', 'status'
+        )
+        extra_kwargs = {
+            'designation': {
+                'required': True
+            },
+            'is_admin': {
+                'read_only': True
+            },
+            'status': {
+                'read_only': True
+            }
+        }
 
     def get_user_instance(self, attr):
         '''
@@ -161,24 +176,6 @@ class UserCompanySerializer(serializers.ModelSerializer):
         instance.send_invite()
         return instance
 
-    class Meta:
-        model = UserCompany
-        fields = (
-            'company', 'is_admin',
-            'designation', 'status'
-        )
-        extra_kwargs = {
-            'designation': {
-                'required': True
-            },
-            'is_admin': {
-                'read_only': True
-            },
-            'status': {
-                'read_only': True
-            }
-        }
-
 
 class UserCompanyCsvSerializer(serializers.ModelSerializer):
     '''
@@ -186,6 +183,15 @@ class UserCompanyCsvSerializer(serializers.ModelSerializer):
     '''
 
     status = serializers.CharField(source='get_status_display', read_only=True)
+
+    class Meta:
+        model = UserCompanyCsv
+        fields = ('csv_file', 'status')
+        extra_kwargs = {
+            'csv_file': {
+                'write_only': True
+            }
+        }
 
     def create(self, validated_data):
         user_company = self.context['request'].user.active_employee
@@ -198,21 +204,15 @@ class UserCompanyCsvSerializer(serializers.ModelSerializer):
         )
         return instance
 
-    class Meta:
-        model = UserCompanyCsv
-        fields = ('csv_file', 'status')
-        extra_kwargs = {
-            'csv_file': {
-                'write_only': True
-            }
-        }
-
 
 class UserCompanySignupSerializer(UserCompanySerializer):
     '''
     User Company serializer for simultaneous signup.
     '''
     user = CreateUserSerializer()
+
+    class Meta(UserCompanySerializer.Meta):
+        fields = UserCompanySerializer.Meta.fields + ('user',)
 
     def get_user_instance(self, attr):
         user_data = attr.pop('user')
@@ -232,15 +232,28 @@ class UserCompanySignupSerializer(UserCompanySerializer):
             )
         )
 
-    class Meta(UserCompanySerializer.Meta):
-        fields = UserCompanySerializer.Meta.fields + ('user',)
-
 
 class InviteEmployeeSerializer(UserCompanySerializer):
     '''
     Invite employess to the company.
     '''
     user = InviteUserSerializer()
+
+    class Meta:
+        model = UserCompany
+        fields = ('user', 'is_admin', 'designation', 'status')
+        extra_kwargs = {
+
+            'designation': {
+                'required': True
+            },
+            'is_admin': {
+                'read_only': True
+            },
+            'status': {
+                'read_only': True
+            }
+        }
 
     def get_user_company_qs(self, attr):
         company = self.get_company_instance(attr)
@@ -285,30 +298,13 @@ class InviteEmployeeSerializer(UserCompanySerializer):
         instance.send_invite()
         return instance
 
-    class Meta:
-        model = UserCompany
-        fields = (
-            'user', 'is_admin',
-            'designation', 'status'
-        )
-        extra_kwargs = {
-
-            'designation': {
-                'required': True
-            },
-            'is_admin': {
-                'read_only': True
-            },
-            'status': {
-                'read_only': True
-            }
-        }
-
 
 class InviteEmployeeCsvSerializer(InviteEmployeeSerializer):
     '''
     Invite employess to the company via csv.
     '''
+    class Meta(InviteEmployeeSerializer.Meta):
+        pass
 
     def get_company_instance(self, attr):
         if hasattr(self, 'company'):
@@ -316,9 +312,6 @@ class InviteEmployeeCsvSerializer(InviteEmployeeSerializer):
         user = self.context.get('user')
         self.company = user.company
         return self.company
-
-    class Meta(InviteEmployeeSerializer.Meta):
-        pass
 
 
 class InvitationSerializer(ResetPasswordSerializer):
@@ -349,6 +342,10 @@ class EmployeeSerializer(serializers.ModelSerializer):
     '''
     user = UpdateUserSerializer()
 
+    class Meta:
+        model = UserCompany
+        fields = ['user', 'designation', 'is_admin', 'status', 'id']
+
     def update(self, instance, validated_data):
         '''
         override because of nested write
@@ -368,16 +365,24 @@ class EmployeeSerializer(serializers.ModelSerializer):
 
         return super(EmployeeSerializer, self).update(instance, validated_data)
 
-    class Meta:
-        model = UserCompany
-        fields = ['user', 'designation', 'is_admin', 'status', 'id']
-
 
 class EmployeeCompanySerializer(serializers.ModelSerializer):
     '''
-    Employee's company and company related details. 
+    Employee's company and company related details.
     '''
     company = CompanySerializer()
+
+    class Meta:
+        model = UserCompany
+        fields = ('company', 'designation', 'is_admin', 'status', 'id')
+        extra_kwargs = {
+            'id': {
+                'read_only': True
+            },
+            'status': {
+                'read_only': True
+            }
+        }
 
     def update(self, instance, validated_data):
         '''
@@ -392,15 +397,3 @@ class EmployeeCompanySerializer(serializers.ModelSerializer):
             company_serializer.is_valid(raise_exception=True)
             company_serializer.save()
         return super(EmployeeCompanySerializer, self).update(instance, validated_data)
-
-    class Meta:
-        model = UserCompany
-        fields = ('company', 'designation', 'is_admin', 'status', 'id')
-        extra_kwargs = {
-            'id': {
-                'read_only': True
-            },
-            'status': {
-                'read_only': True
-            }
-        }

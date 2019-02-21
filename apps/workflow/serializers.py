@@ -20,6 +20,9 @@ class TaskBaseSerializer(serializers.ModelSerializer):
 
 
 class TaskUpdateSerializer(TaskBaseSerializer):
+    class Meta(TaskBaseSerializer.Meta):
+        pass
+
     def update(self, instance, validated_data):
         employee = self.context['request'].user.active_employee
         # don't update assignee if user is only assignee and not admin or write accessor
@@ -36,9 +39,6 @@ class TaskUpdateSerializer(TaskBaseSerializer):
 
         return instance
 
-    class Meta(TaskBaseSerializer.Meta):
-        pass
-
 
 class WorkflowAccessBaseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -48,6 +48,9 @@ class WorkflowAccessBaseSerializer(serializers.ModelSerializer):
 
 
 class WorkflowAccessCreateSerializer(WorkflowAccessBaseSerializer):
+    class Meta(WorkflowAccessBaseSerializer.Meta):
+        fields = WorkflowAccessBaseSerializer.Meta.fields + ('workflow',)
+
     def validate(self, data):
         """
         checks that admin, employee and workflow belongs to the same company.
@@ -67,11 +70,11 @@ class WorkflowAccessCreateSerializer(WorkflowAccessBaseSerializer):
         instance.send_mail()
         return instance
 
-    class Meta(WorkflowAccessBaseSerializer.Meta):
-        fields = WorkflowAccessBaseSerializer.Meta.fields + ('workflow',)
-
 
 class WorkflowAccessUpdateSerializer(WorkflowAccessCreateSerializer):
+    class Meta(WorkflowAccessCreateSerializer.Meta):
+        read_only_fields = WorkflowAccessCreateSerializer.Meta.read_only_fields + ('workflow', 'employee')
+
     def validate(self, data):
         return data
 
@@ -82,9 +85,6 @@ class WorkflowAccessUpdateSerializer(WorkflowAccessCreateSerializer):
         instance = super(WorkflowAccessUpdateSerializer, self).update(instance, validated_data)
         instance.send_mail()
         return instance
-
-    class Meta(WorkflowAccessCreateSerializer.Meta):
-        read_only_fields = WorkflowAccessCreateSerializer.Meta.read_only_fields + ('workflow', 'employee')
 
 
 class WorkflowBaseSerializer(serializers.ModelSerializer):
@@ -97,6 +97,9 @@ class WorkflowBaseSerializer(serializers.ModelSerializer):
 class WorkflowCreateSerializer(WorkflowBaseSerializer):
     tasks = TaskBaseSerializer(many=True)
     accessors = WorkflowAccessBaseSerializer(many=True)
+
+    class Meta(WorkflowBaseSerializer.Meta):
+        fields = WorkflowBaseSerializer.Meta.fields + ('tasks', 'accessors')
 
     def create(self, validated_data):
         '''
@@ -150,14 +153,13 @@ class WorkflowCreateSerializer(WorkflowBaseSerializer):
 
         return workflow
 
-    class Meta(WorkflowBaseSerializer.Meta):
-        fields = WorkflowBaseSerializer.Meta.fields + ('tasks', 'accessors')
-
 
 class WorkflowUpdateSerializer(WorkflowBaseSerializer):
     '''
     Serializer for updating workflow and its tasks. Accessors are not removed via this.
     '''
+    class Meta(WorkflowBaseSerializer.Meta):
+        read_only_fields = WorkflowBaseSerializer.Meta.read_only_fields + ('template',)
 
     def update(self, instance, validated_data):
         '''
@@ -177,6 +179,3 @@ class WorkflowUpdateSerializer(WorkflowBaseSerializer):
         instance.send_mail(people_assiciated, is_updated=True)
 
         return instance
-
-    class Meta(WorkflowBaseSerializer.Meta):
-        read_only_fields = WorkflowBaseSerializer.Meta.read_only_fields + ('template',)
