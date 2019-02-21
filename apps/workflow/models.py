@@ -10,6 +10,7 @@ from django.db import models
 from apps.common import constant as common_constant
 from apps.workflow_template.models import WorkflowTemplate
 
+
 User = get_user_model()
 
 
