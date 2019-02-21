@@ -19,6 +19,27 @@ class TaskBaseSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'workflow', 'parent_task', 'completed_at', 'status')
 
 
+class TaskUpdateSerializer(TaskBaseSerializer):
+    def update(self, instance, validated_data):
+        employee = self.context['request'].user.active_employee
+        # don't update assignee if user is only assignee and not admin or write accessor
+        isOnlyAssignee = instance.assignee == employee and not employee.is_admin
+        isOnlyAssignee = isOnlyAssignee and (not employee.shared_workflows.filter(
+            workflow=instance,
+            permission=common_constant.PERMISSION.READ_WRITE
+        ).exists())
+        if isOnlyAssignee:
+            validated_data.pop('assignee', None)
+
+        instance = super(TaskUpdateSerializer, self).update(instance, validated_data)
+        instance.send_mail()
+
+        return instance
+
+    class Meta(TaskBaseSerializer.Meta):
+        pass
+
+
 class WorkflowAccessBaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkflowAccess
@@ -159,24 +180,3 @@ class WorkflowUpdateSerializer(WorkflowBaseSerializer):
 
     class Meta(WorkflowBaseSerializer.Meta):
         read_only_fields = WorkflowBaseSerializer.Meta.read_only_fields + ('template',)
-
-
-class TaskUpdateSerializer(TaskBaseSerializer):
-    def update(self, instance, validated_data):
-        employee = self.context['request'].user.active_employee
-        # don't update assignee if user is only assignee and not admin or write accessor
-        isOnlyAssignee = instance.assignee == employee and not employee.is_admin
-        isOnlyAssignee = isOnlyAssignee and (not employee.shared_workflows.filter(
-            workflow=instance,
-            permission=common_constant.PERMISSION.READ_WRITE
-        ).exists())
-        if isOnlyAssignee:
-            validated_data.pop('assignee', None)
-
-        instance = super(TaskUpdateSerializer, self).update(instance, validated_data)
-        instance.send_mail()
-
-        return instance
-
-    class Meta(TaskBaseSerializer.Meta):
-        pass
