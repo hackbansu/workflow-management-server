@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+from datetime import datetime
+import pytz
+
 from rest_framework import serializers
 
 from apps.common import constant as common_constant
@@ -9,6 +12,8 @@ from apps.company.serializers import UserCompanySerializer
 from apps.workflow.models import Workflow, Task, WorkflowAccess
 from apps.workflow_template.models import WorkflowTemplate
 from apps.workflow_template.serializers import WorkflowTemplateBaseSerializer as WorkflowTemplateBaseSerializer
+
+utc = pytz.UTC
 
 
 class TaskBaseSerializer(serializers.ModelSerializer):
@@ -39,7 +44,7 @@ class TaskUpdateSerializer(TaskBaseSerializer):
         if isOnlyAssignee:
             raise serializers.ValidationError('Assignee does not have permissions to update assignee of the task.')
 
-        if data.get('assignee', None) not data['assignee'].company == employee.company:
+        if data.get('assignee', None) and not data['assignee'].company == employee.company:
             raise serializers.ValidationError('New assignee must be of the same company.')
 
         return data
@@ -101,6 +106,15 @@ class WorkflowBaseSerializer(serializers.ModelSerializer):
         fields = ('id', 'template', 'name', 'creator', 'start_at', 'complete_at', 'duration')
         read_only_fields = ('id', 'creator', 'complete_at')
 
+    def validate(self, data):
+        '''
+        Validate the start date and time is after current date and time.
+        '''
+        if data['start_at'].replace(tzinfo=utc) < datetime.now().replace(tzinfo=utc):
+            raise serializers.ValidationError('start date can not be earlier than current time.')
+
+        return data
+
 
 class WorkflowCreateSerializer(WorkflowBaseSerializer):
     tasks = TaskBaseSerializer(many=True)
@@ -110,6 +124,11 @@ class WorkflowCreateSerializer(WorkflowBaseSerializer):
         fields = WorkflowBaseSerializer.Meta.fields + ('tasks', 'accessors')
 
     def validate(self, data):
+        '''
+        Validates that the assignees and accessors all belong to the same company as of the creator.
+        '''
+        super(WorkflowCreateSerializer, self).validate(data)
+
         employee = self.context['request'].user.active_employee
 
         # validate that the assignees belong to the same company
