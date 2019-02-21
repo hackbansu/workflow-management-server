@@ -174,5 +174,4 @@ class WorkflowUpdateSerializer(WorkflowBaseSerializer):
         '''
         instance = super(WorkflowUpdateSerializer, self).update(instance, validated_data)
         instance.send_mail(associated_people_details=None, is_updated=True)
-
         return instance

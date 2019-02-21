@@ -1,3 +1,4 @@
+from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 
 from apps.common import constant as common_constant
@@ -24,6 +25,9 @@ class hasWorkflowWritePermission(IsAuthenticated):
         '''
 
         employee_record = request.user.active_employee
+        # check if workflow belongs to the same company as of the user
+        if not obj.creator.company == employee_record.company:
+            return False
 
         retVal = employee_record.is_admin
         retVal = retVal or obj.accessors.filter(employee=employee_record,
@@ -85,7 +89,7 @@ class TaskAccessPermission(company_permissions.IsActiveCompanyEmployee, hasWorkf
         return True
 
 
-class AccessorAccessPermission(company_permissions.IsActiveCompanyEmployee,):
+class AccessorAccessPermission(company_permissions.IsActiveCompanyEmployee, hasWorkflowWritePermission):
     '''
     Check if user is has accessor access permission.
     '''
@@ -95,7 +99,11 @@ class AccessorAccessPermission(company_permissions.IsActiveCompanyEmployee,):
         Allows admin and workflow write access holders.
         '''
         employee = request.user.active_employee
-        res = super(AccessorAccessPermission, self).has_permission(request, view) and employee.is_admin
+        # check if workflow exists and is of the same company as the user
+        workflow_instance = get_object_or_404(Workflow.objects.all(), pk=view.kwargs['workflow_id'])
+        res = super(AccessorAccessPermission, self).has_permission(request, view)
+        res = res and super(AccessorAccessPermission, self).has_object_permission(request,
+                                                                                  view, workflow_instance)
 
         return res
 
@@ -103,6 +111,6 @@ class AccessorAccessPermission(company_permissions.IsActiveCompanyEmployee,):
         employee = request.user.active_employee
 
         if view.action == 'partial_update' or view.action == 'update' or view.action == 'destroy':
-            return obj.workflow.creator.company == employee.company
+            return super(AccessorAccessPermission, self).has_object_permission(request, view, obj.workflow)
 
         return True
