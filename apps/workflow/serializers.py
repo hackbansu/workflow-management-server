@@ -4,6 +4,8 @@ from __future__ import unicode_literals
 from datetime import datetime
 import pytz
 
+from django.db.transaction import atomic
+
 from rest_framework import serializers
 
 from apps.common import constant as common_constant
@@ -29,10 +31,10 @@ class TaskUpdateSerializer(TaskBaseSerializer):
         pass
 
     def validate(self, data):
-        """
+        '''
         Don't update assignee if user is only assignee and not admin or write accessor
         Also check new assignee is of the same company
-        """
+        '''
         employee = self.context['request'].user.active_employee
         instance = self.instance
 
@@ -50,6 +52,9 @@ class TaskUpdateSerializer(TaskBaseSerializer):
         return data
 
     def update(self, instance, validated_data):
+        '''
+        override to send mail on task update.
+        '''
         instance = super(TaskUpdateSerializer, self).update(instance, validated_data)
         instance.send_mail()
 
@@ -69,9 +74,9 @@ class WorkflowAccessCreateSerializer(WorkflowAccessBaseSerializer):
         read_only_fields = WorkflowAccessBaseSerializer.Meta.read_only_fields + ('workflow',)
 
     def validate(self, data):
-        """
+        '''
         checks that employee and workflow belongs to the same company.
-        """
+        '''
         workflow_id = self.context['request'].parser_context['kwargs']['workflow_id']
         data['workflow'] = Workflow.objects.get(pk=workflow_id)
 
@@ -151,6 +156,7 @@ class WorkflowCreateSerializer(WorkflowBaseSerializer):
 
         return data
 
+    @atomic
     def create(self, validated_data):
         '''
         override due to nested writes
