@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from datetime import datetime
-import pytz
+from django.conf import settings
+from django.utils import timezone
 
 from django.db.transaction import atomic
 
@@ -14,8 +14,6 @@ from apps.company.serializers import UserCompanySerializer
 from apps.workflow.models import Workflow, Task, WorkflowAccess
 from apps.workflow_template.models import WorkflowTemplate
 from apps.workflow_template.serializers import WorkflowTemplateBaseSerializer as WorkflowTemplateBaseSerializer
-
-utc = pytz.UTC
 
 
 class TaskBaseSerializer(serializers.ModelSerializer):
@@ -44,10 +42,13 @@ class TaskUpdateSerializer(TaskBaseSerializer):
             permission=common_constant.PERMISSION.READ_WRITE
         ).exists())
         if isOnlyAssignee:
-            raise serializers.ValidationError('Assignee does not have permissions to update assignee of the task.')
+            raise serializers.ValidationError('Assignee does not have permissions to update assignee of the task')
 
-        if data.get('assignee', None) and not data['assignee'].company == employee.company:
-            raise serializers.ValidationError('New assignee must be of the same company.')
+        if data.get('assignee'):
+            if not data['assignee'].company == employee.company:
+                raise serializers.ValidationError('New assignee must be of the same company')
+            if not data['assignee'].is_active:
+                raise serializers.ValidationError('Assignee must be an active employee')
 
         return data
 
@@ -68,6 +69,13 @@ class WorkflowAccessBaseSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', )
 
 
+class WorkflowAccessDestroySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WorkflowAccess
+        fields = ('employee',)
+        read_only_fields = ()
+
+
 class WorkflowAccessCreateSerializer(WorkflowAccessBaseSerializer):
     class Meta(WorkflowAccessBaseSerializer.Meta):
         fields = WorkflowAccessBaseSerializer.Meta.fields + ('workflow',)
@@ -75,37 +83,36 @@ class WorkflowAccessCreateSerializer(WorkflowAccessBaseSerializer):
 
     def validate(self, data):
         '''
-        checks that employee and workflow belongs to the same company.
+        checks that employee belong to the same company as of the user and is active.
         '''
-        workflow_id = self.context['request'].parser_context['kwargs']['workflow_id']
-        data['workflow'] = Workflow.objects.get(pk=workflow_id)
-
-        if not data['employee'].company == data['workflow'].creator.company:
+        if not self.context['request'].user.company == data['employee'].company:
             raise serializers.ValidationError('Employee must be of the same company')
+        if not data['employee'].is_active:
+            raise serializers.ValidationError('Employee must be an active employee')
+
         return data
 
     def create(self, validated_data):
         '''
-        overrided to send mail after creating new accessor.
+        override to create or update accessor instance.
         '''
-        instance = super(WorkflowAccessCreateSerializer, self).create(validated_data)
-        instance.send_mail()
-        return instance
+        instance, created = WorkflowAccess.objects.get_or_create(
+            employee=validated_data['employee'],
+            workflow=validated_data['workflow'],
+            defaults={'permission': validated_data['permission']}
+        )
 
+        if created:
+            instance.send_mail()
+            return instance
 
-class WorkflowAccessUpdateSerializer(WorkflowAccessCreateSerializer):
-    class Meta(WorkflowAccessCreateSerializer.Meta):
-        read_only_fields = WorkflowAccessCreateSerializer.Meta.read_only_fields + ('employee',)
+        # employee already have same permission
+        if instance.permission == validated_data['permission']:
+            return instance
 
-    def validate(self, data):
-        return data
+        instance.permission = validated_data['permission']
+        instance.save()
 
-    def update(self, instance, validated_data):
-        '''
-        override to send mail after update.
-        '''
-        instance = super(WorkflowAccessUpdateSerializer, self).update(instance, validated_data)
-        instance.send_mail()
         return instance
 
 
@@ -119,7 +126,7 @@ class WorkflowBaseSerializer(serializers.ModelSerializer):
         '''
         Validate the start date and time is after current date and time.
         '''
-        if data['start_at'].replace(tzinfo=utc) < datetime.now().replace(tzinfo=utc):
+        if data['start_at'] < timezone.now():
             raise serializers.ValidationError('start date can not be earlier than current time.')
 
         return data
@@ -140,19 +147,21 @@ class WorkflowCreateSerializer(WorkflowBaseSerializer):
 
         employee = self.context['request'].user.active_employee
 
-        # validate that the assignees belong to the same company
-        tasks = data.get('tasks', None)
-        if tasks:
-            for task in tasks:
-                if not task['assignee'].company == employee.company:
-                    raise serializers.ValidationError('Assignees must be of the same company')
+        # validate that the assignees belong to the same company as that of the user and are active employees
+        tasks = data.get('tasks', [])
+        for task in tasks:
+            if not task['assignee'].company == employee.company:
+                raise serializers.ValidationError('Assignees must be of the same company')
+            if not task['assignee'].is_active:
+                raise serializers.ValidationError('Assignees must be an active employee')
 
-        # validate that the accessors are of the same company
-        accessors = data.get('accessors', None)
-        if accessors:
-            for accessor in accessors:
-                if not accessor['employee'].company == employee.company:
-                    raise serializers.ValidationError('Accessor must be of the same company')
+        # validate that the accessors are of the same company as that of the user and are active employees
+        accessors = data.get('accessors', [])
+        for accessor in accessors:
+            if not accessor['employee'].company == employee.company:
+                raise serializers.ValidationError('Accessor must be of the same company')
+            if not accessor['employee'].is_active:
+                raise serializers.ValidationError('Accessor must be an active employee')
 
         return data
 
@@ -177,33 +186,28 @@ class WorkflowCreateSerializer(WorkflowBaseSerializer):
 
         workflow = Workflow.objects.create(creator=employee, **validated_data)
 
-        if tasks:
-            prev_task = None
-            for task in tasks:
-                prev_task = Task.objects.create(workflow=workflow, parent_task=prev_task, **task)
+        prev_task = None
+        for task in tasks:
+            prev_task = Task.objects.create(workflow=workflow, parent_task=prev_task, **task)
+            person = people_assiciated.get(prev_task.assignee_id, {})
+            if not person:
+                person['employee'] = prev_task.assignee
+                people_assiciated[prev_task.assignee_id] = person
+            if not person.get('task_list'):
+                person['task_list'] = []
+            person['task_list'].append(prev_task.title)
 
-                person = people_assiciated.get(prev_task.assignee_id, {})
-                if not person:
-                    person['employee'] = prev_task.assignee
-                    people_assiciated[prev_task.assignee_id] = person
-                if not person.get('task_list', None):
-                    person['task_list'] = []
-                person['task_list'].append(prev_task.title)
-
-        if accessors:
-            for accessor in accessors:
-                if accessor.get('employee').id == employee.id:
-                    # do not add creator in the accessor list.
-                    continue
-
-                instance = WorkflowAccess.objects.create(workflow=workflow, **accessor)
-
-                person = people_assiciated.get(instance.employee_id, {})
-                if not person:
-                    person['employee'] = instance.employee
-                    people_assiciated[instance.employee_id] = person
-                person['is_shared'] = True
-                person['write_permission'] = instance.permission == common_constant.PERMISSION.READ_WRITE
+        for accessor in accessors:
+            if accessor.get('employee').id == employee.id:
+                # do not add creator in the accessor list.
+                continue
+            instance = WorkflowAccess.objects.create(workflow=workflow, **accessor)
+            person = people_assiciated.get(instance.employee_id, {})
+            if not person:
+                person['employee'] = instance.employee
+                people_assiciated[instance.employee_id] = person
+            person['is_shared'] = True
+            person['write_permission'] = instance.permission == common_constant.PERMISSION.READ_WRITE
 
         workflow.send_mail(people_assiciated, is_updated=False)
 

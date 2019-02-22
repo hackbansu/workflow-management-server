@@ -28,4 +28,3 @@ CSV_STATUS = namedtuple(
     'CSV_STATUS',
     'PENDING INPROGRESS PROCESSED ERROR'
 )._make([1, 2, 3, 4])
-

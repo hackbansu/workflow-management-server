@@ -14,7 +14,7 @@ from apps.workflow_template.models import WorkflowTemplate as WorkflowTemplate
 from apps.workflow_template.serializers import WorkflowTemplateSerializer as WorkflowTemplateSerializer
 
 
-class TemplateListRetrieveView(mixins.ListModelMixin, viewsets.GenericViewSet):
+class TemplateListRetrieveView(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     queryset = WorkflowTemplate.objects.all()
     serializer_class = WorkflowTemplateSerializer
     permission_classes = (IsActiveCompanyAdmin,)
