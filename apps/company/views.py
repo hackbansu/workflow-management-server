@@ -142,8 +142,10 @@ class EmployeesView(ListModelMixin, GenericViewSet):
 
 class EmployeesAdminView(EmployeesView):
     serializer_class = company_serializer.EmployeesAdminSerializer
-    permission_classes = (company_permissions.IsActiveCompanyEmployee,
-                          company_permissions.IsActiveCompanyAdmin,)
+    permission_classes = (
+        company_permissions.IsActiveCompanyEmployee,
+        company_permissions.IsActiveCompanyAdmin,
+    )
 
 
 class InviteEmployeeView(GenericViewSet):
