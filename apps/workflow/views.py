@@ -6,6 +6,8 @@ from django.db.models import Q
 from django.utils import timezone
 
 from rest_framework import response, status, viewsets, mixins
+from rest_framework.decorators import action
+from rest_framework.generics import get_object_or_404
 from rest_framework.mixins import (CreateModelMixin, ListModelMixin, RetrieveModelMixin,
                                    UpdateModelMixin, DestroyModelMixin)
 from rest_framework.viewsets import GenericViewSet
@@ -39,16 +41,40 @@ class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, Upd
 
         return self.queryset.filter(Q(tasks__assignee=employee) | Q(accessors__employee=employee)).distinct()
 
+    @action(detail=True,
+            methods=['post'],
+            url_path='accessor',
+            serializer_class=workflow_serializers.WorkflowAccessCreateSerializer)
+    def create_update_accessor(self, request, *args, **kwargs):
+        '''
+        workflow's accessor create or update
+        '''
+        workflow_instance = self.get_object()
+        serializer = self.get_serializer(data=request.data, )
+        serializer.is_valid(raise_exception=True)
+        serializer.save(workflow=workflow_instance)
 
-class AccessorsCUDView(CreateModelMixin, UpdateModelMixin, DestroyModelMixin, GenericViewSet):
-    queryset = WorkflowAccess.objects.all()
-    permission_classes = (workflow_permissions.AccessorAccessPermission,)
-    serializer_class = workflow_serializers.WorkflowAccessCreateSerializer
+        return response.Response(serializer.data, status=status.HTTP_200_OK)
 
-    def get_serializer_class(self):
-        if self.request.method in UPDATE_METHODS:
-            return workflow_serializers.WorkflowAccessUpdateSerializer
-        return self.serializer_class
+    @action(detail=True,
+            methods=['delete'],
+            url_path='accessor/delete',
+            serializer_class=workflow_serializers.WorkflowAccessDestroySerializer)
+    def delete_accessor(self, request, *args, **kwargs):
+        '''
+        workflow's accessor delete
+        '''
+        workflow_instance = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.data
+
+        instance = get_object_or_404(WorkflowAccess.objects.all(),
+                                     employee=data['employee'],
+                                     workflow=workflow_instance)
+
+        instance.delete()
+        return response.Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class TaskULView(RetrieveModelMixin, UpdateModelMixin, ListModelMixin, GenericViewSet):

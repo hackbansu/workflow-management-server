@@ -156,6 +156,10 @@ class UserCompany(BaseModel):
             company=self.company_id
         )
 
+    @property
+    def is_active(self):
+        return self.status == common_constant.USER_STATUS.ACTIVE
+
     def get_invite_token(self):
         token = invite_token_generator.make_token(self.user, self)
         return '%s--%s--%s' % (token, self.user.id, self.id)
