@@ -91,7 +91,7 @@ class WorkflowAccessCreateSerializer(WorkflowAccessBaseSerializer):
         '''
         override to create or update accessor instance.
         '''
-        instance, created = WorkflowAccess.get_or_create(
+        instance, created = WorkflowAccess.objects.get_or_create(
             employee=validated_data['employee'],
             workflow=validated_data['workflow'],
             defaults={'permission': validated_data['permission']}

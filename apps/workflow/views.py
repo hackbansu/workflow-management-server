@@ -41,41 +41,40 @@ class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, Upd
 
         return self.queryset.filter(Q(tasks__assignee=employee) | Q(accessors__employee=employee)).distinct()
 
-    @action(detail=True, url_path='accessor', serializer_class=workflow_serializers.WorkflowAccessCreateSerializer)
-    def create_update_accessor(self, request):
+    @action(detail=True,
+            methods=['post'],
+            url_path='accessor',
+            serializer_class=workflow_serializers.WorkflowAccessCreateSerializer)
+    def create_update_accessor(self, request, *args, **kwargs):
         '''
         workflow's accessor create or update
         '''
         workflow_instance = self.get_object()
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=request.data, )
         serializer.is_valid(raise_exception=True)
-        serializer.save(workflow=workflow)
+        serializer.save(workflow=workflow_instance)
 
         return response.Response(serializer.data, status=status.HTTP_200_OK)
 
+    @action(detail=True,
+            methods=['delete'],
+            url_path='accessor/delete',
+            serializer_class=workflow_serializers.WorkflowAccessDestroySerializer)
+    def delete_accessor(self, request, *args, **kwargs):
+        '''
+        workflow's accessor delete
+        '''
+        workflow_instance = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.data
 
-# class AccessorsUpdateDestroyView(UpdateModelMixin, DestroyModelMixin, GenericViewSet):
-#     queryset = Workflow.objects.all()
-#     permission_classes = (workflow_permissions.WorkflowAccessPermission,)
-#     serializer_class = workflow_serializers.WorkflowAccessUpdateSerializer
+        instance = get_object_or_404(WorkflowAccess.objects.all(),
+                                     employee=data['employee'],
+                                     workflow=workflow_instance)
 
-#     def get_serializer_class(self):
-#         if self.request.method == 'DELETE':
-#             return workflow_serializers.WorkflowAccessDestroySerializer
-#         return self.serializer_class
-
-#     def perform_destroy(self, instance):
-#         workflow_instance = instance
-
-#         serializer = self.get_serializer(data=self.request.data)
-#         serializer.is_valid(raise_exception=True)
-#         data = serializer.data
-
-#         instance = get_object_or_404(WorkflowAccess.objects.all(),
-#                                      employee=data['employee'],
-#                                      workflow=workflow_instance)
-
-#         instance.delete()
+        instance.delete()
+        return response.Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class TaskULView(RetrieveModelMixin, UpdateModelMixin, ListModelMixin, GenericViewSet):
