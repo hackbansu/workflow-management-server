@@ -66,11 +66,15 @@ class WorkflowAccessBaseSerializer(serializers.ModelSerializer):
 class WorkflowAccessCreateSerializer(WorkflowAccessBaseSerializer):
     class Meta(WorkflowAccessBaseSerializer.Meta):
         fields = WorkflowAccessBaseSerializer.Meta.fields + ('workflow',)
+        read_only_fields = WorkflowAccessBaseSerializer.Meta.read_only_fields + ('workflow',)
 
     def validate(self, data):
         """
-        checks that admin, employee and workflow belongs to the same company.
+        checks that employee and workflow belongs to the same company.
         """
+        workflow_id = self.context['request'].parser_context['kwargs']['workflow_id']
+        data['workflow'] = Workflow.objects.get(pk=workflow_id)
+
         if not data['employee'].company == data['workflow'].creator.company:
             raise serializers.ValidationError('Employee must be of the same company')
         return data
@@ -86,7 +90,7 @@ class WorkflowAccessCreateSerializer(WorkflowAccessBaseSerializer):
 
 class WorkflowAccessUpdateSerializer(WorkflowAccessCreateSerializer):
     class Meta(WorkflowAccessCreateSerializer.Meta):
-        read_only_fields = WorkflowAccessCreateSerializer.Meta.read_only_fields + ('workflow', 'employee')
+        read_only_fields = WorkflowAccessCreateSerializer.Meta.read_only_fields + ('employee',)
 
     def validate(self, data):
         return data
