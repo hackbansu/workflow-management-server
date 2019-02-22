@@ -29,10 +29,6 @@ class Workflow(models.Model):
         null=True,
         help_text='time when workflow completed'
     )
-    duration = models.DurationField(
-        default=timedelta(0),
-        help_text='expected completion duration'
-    )
 
     def __unicode__(self):
         return '{workflow_name}-#-{creator}'.format(

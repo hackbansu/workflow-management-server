@@ -107,7 +107,7 @@ class WorkflowAccessUpdateSerializer(WorkflowAccessCreateSerializer):
 class WorkflowBaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Workflow
-        fields = ('id', 'template', 'name', 'creator', 'start_at', 'complete_at', 'duration')
+        fields = ('id', 'template', 'name', 'creator', 'start_at', 'complete_at',)
         read_only_fields = ('id', 'creator', 'complete_at')
 
     def validate(self, data):
