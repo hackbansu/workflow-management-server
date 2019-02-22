@@ -96,7 +96,7 @@ class AccessorAccessPermission(company_permissions.IsActiveCompanyEmployee):
         if not res:
             return False
 
-        workflows = Workflow.objects.filter(pk=view.kwargs['workflow_id'], company=employee.company)
+        workflows = Workflow.objects.filter(pk=view.kwargs['workflow_id'], creator__company=employee.company)
         if not workflows.exists():
             return False
 

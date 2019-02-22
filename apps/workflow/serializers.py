@@ -40,10 +40,13 @@ class TaskUpdateSerializer(TaskBaseSerializer):
             permission=common_constant.PERMISSION.READ_WRITE
         ).exists())
         if isOnlyAssignee:
-            raise serializers.ValidationError('Assignee does not have permissions to update assignee of the task.')
+            raise serializers.ValidationError('Assignee does not have permissions to update assignee of the task')
 
-        if data.get('assignee') and not data['assignee'].company == employee.company:
-            raise serializers.ValidationError('New assignee must be of the same company.')
+        if data.get('assignee'):
+            if not data['assignee'].company == employee.company:
+                raise serializers.ValidationError('New assignee must be of the same company')
+            if not data['assignee'].is_active:
+                raise serializers.ValidationError('Assignee must be an active employee')
 
         return data
 
@@ -68,13 +71,17 @@ class WorkflowAccessCreateSerializer(WorkflowAccessBaseSerializer):
 
     def validate(self, data):
         """
-        checks that employee and workflow belongs to the same company.
+        checks that employee and workflow belongs to the same company and employee is active.
+        Also check if the 
         """
         workflow_id = self.context['request'].parser_context['kwargs']['workflow_id']
         data['workflow'] = Workflow.objects.get(pk=workflow_id)
 
         if not data['employee'].company == data['workflow'].creator.company:
             raise serializers.ValidationError('Employee must be of the same company')
+        if not data['employee'].is_active:
+            raise serializers.ValidationError('Employee must be an active employee')
+
         return data
 
     def create(self, validated_data):
@@ -131,17 +138,21 @@ class WorkflowCreateSerializer(WorkflowBaseSerializer):
 
         employee = self.context['request'].user.active_employee
 
-        # validate that the assignees belong to the same company
+        # validate that the assignees belong to the same company as that of the user and are active employees
         tasks = data.get('tasks', [])
         for task in tasks:
             if not task['assignee'].company == employee.company:
                 raise serializers.ValidationError('Assignees must be of the same company')
+            if not task['assignee'].is_active:
+                raise serializers.ValidationError('Assignees must be an active employee')
 
-        # validate that the accessors are of the same company
+        # validate that the accessors are of the same company as that of the user and are active employees
         accessors = data.get('accessors', [])
         for accessor in accessors:
             if not accessor['employee'].company == employee.company:
                 raise serializers.ValidationError('Accessor must be of the same company')
+            if not accessor['employee'].is_active:
+                raise serializers.ValidationError('Accessor must be an active employee')
 
         return data
 
