@@ -25,8 +25,7 @@ class IsActiveCompanyEmployee(IsAuthenticated):
     '''
 
     def has_permission(self, request, view):
-        res = super(IsActiveCompanyEmployee,
-                    self).has_permission(request, view)
+        res = super(IsActiveCompanyEmployee, self).has_permission(request, view)
         return res and request.user.company.status == common_constant.COMPANY_STATUS.ACTIVE
 
 

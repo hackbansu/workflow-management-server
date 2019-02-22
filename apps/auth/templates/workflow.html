@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta http-equiv="X-UA-Compatible" content="ie=edge" />
+		<title>Workflow Update</title>
+	</head>
+	<body>
+		<header>
+			<h1>{{ workflow_name }} Workflow
+          {% if is_updated %}
+            Updated
+          {% elif is_creator %}
+            Created
+          {% elif is_shared %}
+            Shared
+          {% else %}
+            Started
+          {% endif %}
+      </h1>
+		</header>
+		<main>
+			<p>Hi {{ name }}</p>
+			<div>
+        <p>Congratulations,</p>
+        <p>
+        {{ workflow_name }} workflow
+        {% if is_updated %}
+          has been updated.
+        {% elif is_creator %}
+          is created. Cheers.
+        {% elif is_shared %}
+          is shared with you. You have read
+          {% if write_permission %}
+            and write
+          {% endif %}
+          permission(s).
+        {% else %}
+            is stared.
+        {% endif %}
+        </p>
+
+        <p>
+        {% if task_list %}
+          You have been assigned the following tasks.
+          <ol>
+          {% for task in task_list %}
+            <li>{{task}}</li>
+          {% endfor %}
+          </ol>
+        {% endif %}
+        </p>
+        </div>
+		</main>
+	</body>
+</html>
