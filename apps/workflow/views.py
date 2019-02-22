@@ -18,6 +18,7 @@ from apps.workflow import serializers as workflow_serializers
 from apps.workflow.models import Workflow, Task, WorkflowAccess
 
 User = get_user_model()
+UPDATE_METHODS = ('PATCH', 'PUT')
 
 
 class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, UpdateModelMixin, GenericViewSet):
@@ -26,7 +27,7 @@ class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, Upd
     serializer_class = workflow_serializers.WorkflowCreateSerializer
 
     def get_serializer_class(self):
-        if self.request.method == 'PATCH' or self.request.method == 'PUT':
+        if self.request.method in UPDATE_METHODS:
             return workflow_serializers.WorkflowUpdateSerializer
         return self.serializer_class
 
@@ -45,7 +46,7 @@ class AccessorsCUDView(CreateModelMixin, UpdateModelMixin, DestroyModelMixin, Ge
     serializer_class = workflow_serializers.WorkflowAccessCreateSerializer
 
     def get_serializer_class(self):
-        if self.request.method == 'PATCH' or self.request.method == 'PUT':
+        if self.request.method in UPDATE_METHODS:
             return workflow_serializers.WorkflowAccessUpdateSerializer
         return self.serializer_class
 

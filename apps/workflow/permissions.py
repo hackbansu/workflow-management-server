@@ -1,5 +1,4 @@
-from rest_framework.generics import get_object_or_404
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, SAFE_METHODS
 
 from apps.common import constant as common_constant
 from apps.company import permissions as company_permissions
@@ -46,17 +45,14 @@ class WorkflowAccessPermission(company_permissions.IsActiveCompanyEmployee, hasW
         '''
         res = super(WorkflowAccessPermission, self).has_permission(request, view)
 
-        if view.action == 'create':
+        if request.method == 'POST':
             return res and request.user.active_employee.is_admin
-
-        if view.action == 'list':
-            return res
 
         return res
 
     def has_object_permission(self, request, view, obj):
         employee_record = request.user.active_employee
-        if view.action == 'partial_update' or view.action == 'update':
+        if request.method not in SAFE_METHODS:
             return super(WorkflowAccessPermission, self).has_object_permission(request, view, obj)
 
         return True
@@ -72,16 +68,12 @@ class TaskAccessPermission(company_permissions.IsActiveCompanyEmployee, hasWorkf
         Allows company employees to view their tasks.
         '''
         res = super(TaskAccessPermission, self).has_permission(request, view)
-
-        if view.action == 'list':
-            return res
-
         return res
 
     def has_object_permission(self, request, view, obj):
         employee_record = request.user.active_employee
 
-        if view.action == 'partial_update' or view.action == 'update':
+        if request.method not in SAFE_METHODS:
             retVal = super(TaskAccessPermission, self).has_object_permission(request, view, obj.workflow)
             retVal = obj.assignee == employee_record or retVal
             return retVal
@@ -89,7 +81,7 @@ class TaskAccessPermission(company_permissions.IsActiveCompanyEmployee, hasWorkf
         return True
 
 
-class AccessorAccessPermission(company_permissions.IsActiveCompanyEmployee, hasWorkflowWritePermission):
+class AccessorAccessPermission(company_permissions.IsActiveCompanyEmployee):
     '''
     Check if user is has accessor access permission.
     '''
@@ -100,16 +92,18 @@ class AccessorAccessPermission(company_permissions.IsActiveCompanyEmployee, hasW
         '''
         employee = request.user.active_employee
         # check if workflow exists and is of the same company as the user
-        workflow_instance = get_object_or_404(Workflow.objects.all(), pk=view.kwargs['workflow_id'])
         res = super(AccessorAccessPermission, self).has_permission(request, view)
-        res = res and super(AccessorAccessPermission, self).has_object_permission(request, view, workflow_instance)
+        if not res:
+            return False
+
+        workflows = Workflow.objects.filter(pk=view.kwargs['workflow_id'], company=employee.company)
+        if not workflows.exists():
+            return False
+
+        workflow_instance = workflows[0]
+        res = res and (employee.is_admin or workflow_instance.accessors.filter(
+            employee=employee,
+            permission=common_constant.PERMISSION.READ_WRITE
+        ).exists())
 
         return res
-
-    def has_object_permission(self, request, view, obj):
-        employee = request.user.active_employee
-
-        if view.action == 'partial_update' or view.action == 'update' or view.action == 'destroy':
-            return super(AccessorAccessPermission, self).has_object_permission(request, view, obj.workflow)
-
-        return True

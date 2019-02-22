@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from datetime import datetime
-import pytz
+from django.conf import settings
+from django.utils import timezone
 
 from rest_framework import serializers
 
@@ -12,8 +12,6 @@ from apps.company.serializers import UserCompanySerializer
 from apps.workflow.models import Workflow, Task, WorkflowAccess
 from apps.workflow_template.models import WorkflowTemplate
 from apps.workflow_template.serializers import WorkflowTemplateBaseSerializer as WorkflowTemplateBaseSerializer
-
-utc = pytz.UTC
 
 
 class TaskBaseSerializer(serializers.ModelSerializer):
@@ -44,7 +42,7 @@ class TaskUpdateSerializer(TaskBaseSerializer):
         if isOnlyAssignee:
             raise serializers.ValidationError('Assignee does not have permissions to update assignee of the task.')
 
-        if data.get('assignee', None) and not data['assignee'].company == employee.company:
+        if data.get('assignee') and not data['assignee'].company == employee.company:
             raise serializers.ValidationError('New assignee must be of the same company.')
 
         return data
@@ -88,12 +86,10 @@ class WorkflowAccessCreateSerializer(WorkflowAccessBaseSerializer):
         return instance
 
 
-class WorkflowAccessUpdateSerializer(WorkflowAccessCreateSerializer):
-    class Meta(WorkflowAccessCreateSerializer.Meta):
-        read_only_fields = WorkflowAccessCreateSerializer.Meta.read_only_fields + ('employee',)
-
-    def validate(self, data):
-        return data
+class WorkflowAccessUpdateSerializer(WorkflowAccessBaseSerializer):
+    class Meta(WorkflowAccessBaseSerializer.Meta):
+        fields = WorkflowAccessBaseSerializer.Meta.fields + ('workflow',)
+        read_only_fields = WorkflowAccessBaseSerializer.Meta.read_only_fields + ('workflow', 'employee')
 
     def update(self, instance, validated_data):
         '''
@@ -114,7 +110,7 @@ class WorkflowBaseSerializer(serializers.ModelSerializer):
         '''
         Validate the start date and time is after current date and time.
         '''
-        if data['start_at'].replace(tzinfo=utc) < datetime.now().replace(tzinfo=utc):
+        if data['start_at'] < timezone.now():
             raise serializers.ValidationError('start date can not be earlier than current time.')
 
         return data
@@ -136,18 +132,16 @@ class WorkflowCreateSerializer(WorkflowBaseSerializer):
         employee = self.context['request'].user.active_employee
 
         # validate that the assignees belong to the same company
-        tasks = data.get('tasks', None)
-        if tasks:
-            for task in tasks:
-                if not task['assignee'].company == employee.company:
-                    raise serializers.ValidationError('Assignees must be of the same company')
+        tasks = data.get('tasks', [])
+        for task in tasks:
+            if not task['assignee'].company == employee.company:
+                raise serializers.ValidationError('Assignees must be of the same company')
 
         # validate that the accessors are of the same company
-        accessors = data.get('accessors', None)
-        if accessors:
-            for accessor in accessors:
-                if not accessor['employee'].company == employee.company:
-                    raise serializers.ValidationError('Accessor must be of the same company')
+        accessors = data.get('accessors', [])
+        for accessor in accessors:
+            if not accessor['employee'].company == employee.company:
+                raise serializers.ValidationError('Accessor must be of the same company')
 
         return data
 
@@ -171,33 +165,28 @@ class WorkflowCreateSerializer(WorkflowBaseSerializer):
 
         workflow = Workflow.objects.create(creator=employee, **validated_data)
 
-        if tasks:
-            prev_task = None
-            for task in tasks:
-                prev_task = Task.objects.create(workflow=workflow, parent_task=prev_task, **task)
+        prev_task = None
+        for task in tasks:
+            prev_task = Task.objects.create(workflow=workflow, parent_task=prev_task, **task)
+            person = people_assiciated.get(prev_task.assignee_id, {})
+            if not person:
+                person['employee'] = prev_task.assignee
+                people_assiciated[prev_task.assignee_id] = person
+            if not person.get('task_list'):
+                person['task_list'] = []
+            person['task_list'].append(prev_task.title)
 
-                person = people_assiciated.get(prev_task.assignee_id, {})
-                if not person:
-                    person['employee'] = prev_task.assignee
-                    people_assiciated[prev_task.assignee_id] = person
-                if not person.get('task_list', None):
-                    person['task_list'] = []
-                person['task_list'].append(prev_task.title)
-
-        if accessors:
-            for accessor in accessors:
-                if accessor.get('employee').id == employee.id:
-                    # do not add creator in the accessor list.
-                    continue
-
-                instance = WorkflowAccess.objects.create(workflow=workflow, **accessor)
-
-                person = people_assiciated.get(instance.employee_id, {})
-                if not person:
-                    person['employee'] = instance.employee
-                    people_assiciated[instance.employee_id] = person
-                person['is_shared'] = True
-                person['write_permission'] = instance.permission == common_constant.PERMISSION.READ_WRITE
+        for accessor in accessors:
+            if accessor.get('employee').id == employee.id:
+                # do not add creator in the accessor list.
+                continue
+            instance = WorkflowAccess.objects.create(workflow=workflow, **accessor)
+            person = people_assiciated.get(instance.employee_id, {})
+            if not person:
+                person['employee'] = instance.employee
+                people_assiciated[instance.employee_id] = person
+            person['is_shared'] = True
+            person['write_permission'] = instance.permission == common_constant.PERMISSION.READ_WRITE
 
         workflow.send_mail(people_assiciated, is_updated=False)
 
