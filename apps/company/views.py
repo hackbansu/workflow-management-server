@@ -122,8 +122,8 @@ class EmployeesView(ListModelMixin, GenericViewSet):
         return employees of company, can be filtered on the basis of status and admin is possible.
     '''
 
-    serializer_class = company_serializer.EmployeeSerializer
-    permission_classes = [company_permissions.IsActiveCompanyEmployee]
+    serializer_class = company_serializer.EmployeesSerializer
+    permission_classes = (company_permissions.IsActiveCompanyEmployee,)
     filter_backends = (filters.DjangoFilterBackend,)
     filter_fields = ('status', 'is_admin')
     queryset = UserCompany.objects.all()
@@ -138,6 +138,12 @@ class EmployeesView(ListModelMixin, GenericViewSet):
                 status=common_constant.USER_STATUS.ACTIVE
             )
         return qs
+
+
+class EmployeesAdminView(EmployeesView):
+    serializer_class = company_serializer.EmployeesAdminSerializer
+    permission_classes = (company_permissions.IsActiveCompanyEmployee,
+                          company_permissions.IsActiveCompanyAdmin,)
 
 
 class InviteEmployeeView(GenericViewSet):
