@@ -6,6 +6,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from rest_framework import response, status, viewsets, mixins
+from rest_framework.generics import get_object_or_404
 from rest_framework.mixins import (CreateModelMixin, ListModelMixin, RetrieveModelMixin,
                                    UpdateModelMixin, DestroyModelMixin)
 from rest_framework.viewsets import GenericViewSet
@@ -40,15 +41,28 @@ class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, Upd
         return self.queryset.filter(Q(tasks__assignee=employee) | Q(accessors__employee=employee)).distinct()
 
 
-class AccessorsCUDView(CreateModelMixin, UpdateModelMixin, DestroyModelMixin, GenericViewSet):
-    queryset = WorkflowAccess.objects.all()
-    permission_classes = (workflow_permissions.AccessorAccessPermission,)
-    serializer_class = workflow_serializers.WorkflowAccessCreateSerializer
+class AccessorsUpdateDestroyView(UpdateModelMixin, DestroyModelMixin, GenericViewSet):
+    queryset = Workflow.objects.all()
+    permission_classes = (workflow_permissions.WorkflowAccessPermission,)
+    serializer_class = workflow_serializers.WorkflowAccessUpdateSerializer
 
     def get_serializer_class(self):
-        if self.request.method in UPDATE_METHODS:
-            return workflow_serializers.WorkflowAccessUpdateSerializer
+        if self.request.method == 'DELETE':
+            return workflow_serializers.WorkflowAccessDestroySerializer
         return self.serializer_class
+
+    def perform_destroy(self, instance):
+        workflow_instance = instance
+
+        serializer = self.get_serializer(data=self.request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.data
+
+        instance = get_object_or_404(WorkflowAccess.objects.all(),
+                                     employee=data['employee'],
+                                     workflow=workflow_instance)
+
+        instance.delete()
 
 
 class TaskULView(RetrieveModelMixin, UpdateModelMixin, ListModelMixin, GenericViewSet):

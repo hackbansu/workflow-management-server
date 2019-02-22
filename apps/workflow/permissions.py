@@ -79,31 +79,3 @@ class TaskAccessPermission(company_permissions.IsActiveCompanyEmployee, hasWorkf
             return retVal
 
         return True
-
-
-class AccessorAccessPermission(company_permissions.IsActiveCompanyEmployee):
-    '''
-    Check if user is has accessor access permission.
-    '''
-
-    def has_permission(self, request, view):
-        '''
-        Allows admin and workflow write access holders.
-        '''
-        employee = request.user.active_employee
-        # check if workflow exists and is of the same company as the user
-        res = super(AccessorAccessPermission, self).has_permission(request, view)
-        if not res:
-            return False
-
-        workflows = Workflow.objects.filter(pk=view.kwargs['workflow_id'], creator__company=employee.company)
-        if not workflows.exists():
-            return False
-
-        workflow_instance = workflows[0]
-        res = res and (employee.is_admin or workflow_instance.accessors.filter(
-            employee=employee,
-            permission=common_constant.PERMISSION.READ_WRITE
-        ).exists())
-
-        return res

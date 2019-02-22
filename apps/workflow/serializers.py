@@ -64,46 +64,52 @@ class WorkflowAccessBaseSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', )
 
 
-class WorkflowAccessCreateSerializer(WorkflowAccessBaseSerializer):
+class WorkflowAccessDestroySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WorkflowAccess
+        fields = ('employee',)
+        read_only_fields = ()
+
+
+class WorkflowAccessUpdateSerializer(WorkflowAccessBaseSerializer):
     class Meta(WorkflowAccessBaseSerializer.Meta):
         fields = WorkflowAccessBaseSerializer.Meta.fields + ('workflow',)
         read_only_fields = WorkflowAccessBaseSerializer.Meta.read_only_fields + ('workflow',)
 
     def validate(self, data):
-        """
-        checks that employee and workflow belongs to the same company and employee is active.
-        Also check if the 
-        """
-        workflow_id = self.context['request'].parser_context['kwargs']['workflow_id']
-        data['workflow'] = Workflow.objects.get(pk=workflow_id)
-
-        if not data['employee'].company == data['workflow'].creator.company:
+        '''
+        checks that employee belong to the same company as of the user and is active.
+        '''
+        if not self.context['request'].user.company == data['employee'].company:
             raise serializers.ValidationError('Employee must be of the same company')
         if not data['employee'].is_active:
             raise serializers.ValidationError('Employee must be an active employee')
 
         return data
 
-    def create(self, validated_data):
-        '''
-        overrided to send mail after creating new accessor.
-        '''
-        instance = super(WorkflowAccessCreateSerializer, self).create(validated_data)
-        instance.send_mail()
-        return instance
-
-
-class WorkflowAccessUpdateSerializer(WorkflowAccessBaseSerializer):
-    class Meta(WorkflowAccessBaseSerializer.Meta):
-        fields = WorkflowAccessBaseSerializer.Meta.fields + ('workflow',)
-        read_only_fields = WorkflowAccessBaseSerializer.Meta.read_only_fields + ('workflow', 'employee')
-
     def update(self, instance, validated_data):
         '''
-        override to send mail after update.
+        override to create or update accessor instance.
         '''
-        instance = super(WorkflowAccessUpdateSerializer, self).update(instance, validated_data)
-        instance.send_mail()
+        workflow_instance = instance
+
+        instance, created = workflow_instance.accessors.get_or_create(
+            employee=validated_data['employee'],
+            workflow=workflow_instance,
+            defaults={'permission': validated_data['permission']}
+        )
+
+        if created:
+            instance.send_mail()
+            return instance
+
+        # employee already have same permission
+        if instance.permission == validated_data['permission']:
+            return instance
+
+        instance.permission = validated_data['permission']
+        instance.save()
+
         return instance
 
 
