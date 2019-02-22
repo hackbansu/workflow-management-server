@@ -71,7 +71,7 @@ class WorkflowAccessDestroySerializer(serializers.ModelSerializer):
         read_only_fields = ()
 
 
-class WorkflowAccessUpdateSerializer(WorkflowAccessBaseSerializer):
+class WorkflowAccessCreateSerializer(WorkflowAccessBaseSerializer):
     class Meta(WorkflowAccessBaseSerializer.Meta):
         fields = WorkflowAccessBaseSerializer.Meta.fields + ('workflow',)
         read_only_fields = WorkflowAccessBaseSerializer.Meta.read_only_fields + ('workflow',)
@@ -87,15 +87,13 @@ class WorkflowAccessUpdateSerializer(WorkflowAccessBaseSerializer):
 
         return data
 
-    def update(self, instance, validated_data):
+    def create(self, validated_data):
         '''
         override to create or update accessor instance.
         '''
-        workflow_instance = instance
-
-        instance, created = workflow_instance.accessors.get_or_create(
+        instance, created = WorkflowAccess.get_or_create(
             employee=validated_data['employee'],
-            workflow=workflow_instance,
+            workflow=validated_data['workflow'],
             defaults={'permission': validated_data['permission']}
         )
 

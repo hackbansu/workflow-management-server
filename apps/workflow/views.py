@@ -6,6 +6,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from rest_framework import response, status, viewsets, mixins
+from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.mixins import (CreateModelMixin, ListModelMixin, RetrieveModelMixin,
                                    UpdateModelMixin, DestroyModelMixin)
@@ -40,29 +41,41 @@ class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, Upd
 
         return self.queryset.filter(Q(tasks__assignee=employee) | Q(accessors__employee=employee)).distinct()
 
-
-class AccessorsUpdateDestroyView(UpdateModelMixin, DestroyModelMixin, GenericViewSet):
-    queryset = Workflow.objects.all()
-    permission_classes = (workflow_permissions.WorkflowAccessPermission,)
-    serializer_class = workflow_serializers.WorkflowAccessUpdateSerializer
-
-    def get_serializer_class(self):
-        if self.request.method == 'DELETE':
-            return workflow_serializers.WorkflowAccessDestroySerializer
-        return self.serializer_class
-
-    def perform_destroy(self, instance):
-        workflow_instance = instance
-
-        serializer = self.get_serializer(data=self.request.data)
+    @action(detail=True, url_path='accessor', serializer_class=workflow_serializers.WorkflowAccessCreateSerializer)
+    def create_update_accessor(self, request):
+        '''
+        workflow's accessor create or update
+        '''
+        workflow_instance = self.get_object()
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        data = serializer.data
+        serializer.save(workflow=workflow)
 
-        instance = get_object_or_404(WorkflowAccess.objects.all(),
-                                     employee=data['employee'],
-                                     workflow=workflow_instance)
+        return response.Response(serializer.data, status=status.HTTP_200_OK)
 
-        instance.delete()
+
+# class AccessorsUpdateDestroyView(UpdateModelMixin, DestroyModelMixin, GenericViewSet):
+#     queryset = Workflow.objects.all()
+#     permission_classes = (workflow_permissions.WorkflowAccessPermission,)
+#     serializer_class = workflow_serializers.WorkflowAccessUpdateSerializer
+
+#     def get_serializer_class(self):
+#         if self.request.method == 'DELETE':
+#             return workflow_serializers.WorkflowAccessDestroySerializer
+#         return self.serializer_class
+
+#     def perform_destroy(self, instance):
+#         workflow_instance = instance
+
+#         serializer = self.get_serializer(data=self.request.data)
+#         serializer.is_valid(raise_exception=True)
+#         data = serializer.data
+
+#         instance = get_object_or_404(WorkflowAccess.objects.all(),
+#                                      employee=data['employee'],
+#                                      workflow=workflow_instance)
+
+#         instance.delete()
 
 
 class TaskULView(RetrieveModelMixin, UpdateModelMixin, ListModelMixin, GenericViewSet):

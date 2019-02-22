@@ -7,6 +7,5 @@ from apps.workflow import views as workflow_views
 router = routers.SimpleRouter()
 router.register('workflow', workflow_views.WorkflowCRULView)
 router.register('task', workflow_views.TaskULView)
-router.register('accessor', workflow_views.AccessorsUpdateDestroyView)
 
 urlpatterns = router.urls
