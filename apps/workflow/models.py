@@ -96,6 +96,10 @@ class Task(models.Model):
         default=timedelta(0),
         help_text='time delay between completion of parent task and star of current task'
     )
+    duration = models.DurationField(
+        default=timedelta(0),
+        help_text='expected duration of the task'
+    )
     status = models.PositiveIntegerField(
         choices=(choice for choice in zip(
             common_constant.TASK_STATUS,

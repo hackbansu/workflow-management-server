@@ -20,7 +20,7 @@ class TaskBaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
         fields = ('id', 'workflow', 'title', 'description', 'parent_task',
-                  'assignee', 'completed_at', 'start_delta', 'status')
+                  'assignee', 'completed_at', 'start_delta', 'duration', 'status')
         read_only_fields = ('id', 'workflow', 'parent_task', 'completed_at', 'status')
 
 
