@@ -12,6 +12,7 @@ from apps.common import constant as common_constant
 from apps.workflow_template.models import WorkflowTemplate
 from apps.company.models import UserCompany
 
+
 User = get_user_model()
 
 logger = logging.getLogger(__name__)
