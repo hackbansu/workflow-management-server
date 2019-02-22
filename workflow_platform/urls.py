@@ -50,6 +50,7 @@ urlpatterns = [
     url(r'^api/', include('apps.workflow_template.urls', namespace='workflow-template')),
     url(r'^api/', include('apps.auth.urls', namespace='auth')),
     url(r'^api/', include('apps.company.urls', namespace='company')),
+    url(r'^api/', include('apps.workflow.urls', namespace='workflow')),
 ]
 
 urlpatterns += static(settings.MEDIA_URL,

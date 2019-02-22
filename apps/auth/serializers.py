@@ -27,8 +27,7 @@ class BaseUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('first_name', 'last_name',
-                  'profile_photo', 'profile_photo_url')
+        fields = ('first_name', 'last_name', 'profile_photo', 'profile_photo_url')
         extra_kwargs = {
             'last_name': {
                 'help_text': 'User last name'
@@ -90,6 +89,18 @@ class UserDetailSerializer(UpdateUserSerializer):
     '''
     User Details email, id, token are extended.
     '''
+    class Meta(UpdateUserSerializer.Meta):
+        fields = UpdateUserSerializer.Meta.fields + ('token',)
+        extra_kwargs = UpdateUserSerializer.Meta.extra_kwargs.copy()
+        extra_kwargs.update({
+            'email': {
+                'read_only': False
+            },
+            'token': {
+                'help_text': 'User auth token',
+                'read_only': True
+            }
+        })
 
     def validate_email(self, value):
         '''
@@ -108,19 +119,6 @@ class UserDetailSerializer(UpdateUserSerializer):
         Create user, create vs create_user conflict.
         '''
         return User.objects.create_user(**validated_data)
-
-    class Meta(UpdateUserSerializer.Meta):
-        fields = UpdateUserSerializer.Meta.fields + ('token',)
-        extra_kwargs = UpdateUserSerializer.Meta.extra_kwargs.copy()
-        extra_kwargs.update({
-            'email': {
-                'read_only': False
-            },
-            'token': {
-                'help_text': 'User auth token',
-                'read_only': True
-            }
-        })
 
 
 class AuthTokenSerializer(serializers.Serializer):
@@ -180,6 +178,13 @@ class ResetPasswordSerializer(UpdateUserSerializer):
     '''
     User password reset and token is invalidated.
     '''
+    class Meta(UpdateUserSerializer.Meta):
+        fields = ('password',)
+        extra_kwargs = {
+            'password': {
+                'write_only': True
+            }
+        }
 
     def validate_password(self, password):
         if self.instance:
@@ -206,14 +211,6 @@ class ResetPasswordSerializer(UpdateUserSerializer):
         instance.login_now()
 
         return instance
-
-    class Meta(UpdateUserSerializer.Meta):
-        fields = ['password']
-        extra_kwargs = {
-            'password': {
-                'write_only': True
-            }
-        }
 
 
 class UserBasicDetailSerializer(serializers.ModelSerializer):

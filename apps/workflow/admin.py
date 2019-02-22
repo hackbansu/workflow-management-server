@@ -24,7 +24,7 @@ class WorkflowAccessAdmin(admin.ModelAdmin):
     '''
     Workflow access admin to be used with django admin app.
     '''
-    list_display = ('id', 'user', 'workflow', 'permission')
+    list_display = ('id', 'employee', 'workflow', 'permission')
 
 
 admin.site.register(Workflow, WorkflowAdmin)
