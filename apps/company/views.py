@@ -91,6 +91,7 @@ class EmployeeCompanyView(ListModelMixin, UpdateModelMixin, DestroyModelMixin, C
     )
     filter_backends = (filters.DjangoFilterBackend,)
     filter_fields = ('status', 'is_admin')
+
     def get_queryset(self):
         return self.queryset.filter(
             company=self.request.user.company
