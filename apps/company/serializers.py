@@ -337,7 +337,7 @@ class InvitationSerializer(ResetPasswordSerializer):
         return super(InvitationSerializer, self).update(instance, validated_data)
 
 
-class EmployeeSerializer(serializers.ModelSerializer):
+class EmployeeAdminSerializer(serializers.ModelSerializer):
     '''
     Employee serializer to fetch company employees
     '''
@@ -345,7 +345,9 @@ class EmployeeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserCompany
-        fields = ('user', 'designation', 'is_admin', 'status', 'id')
+        fields = ('user', 'designation', 'is_admin',
+                  'status', 'id', 'join_at', 'left_at')
+        read_only_fields = ('join_at', 'left_at')
 
     def update(self, instance, validated_data):
         '''
@@ -400,10 +402,10 @@ class EmployeeCompanySerializer(serializers.ModelSerializer):
         return super(EmployeeCompanySerializer, self).update(instance, validated_data)
 
 
-class EmployeesAdminSerializer(EmployeeSerializer):
-    class Meta(EmployeeSerializer.Meta):
-        fields = EmployeeSerializer.Meta.fields + ('join_at', 'left_at')
-
-
-class EmployeesSerializer(EmployeeSerializer):
+class EmployeesSerializer(serializers.ModelSerializer):
     user = BaseUserSerializer()
+
+    class Meta:
+        model = UserCompany
+        fields = ('user', 'designation', 'is_admin', 'status', 'id')
+        read_only_fields = ('user', 'designation', 'is_admin', 'status', 'id')

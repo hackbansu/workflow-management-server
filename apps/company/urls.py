@@ -8,7 +8,6 @@ from apps.company import views as company_views
 router = routers.SimpleRouter()
 router.register('create-company', company_views.CreateCompanyUserView)
 router.register('employees', company_views.EmployeesView)
-router.register('employees-admin', company_views.EmployeesAdminView)
 router.register('update-company', company_views.UpdateCompanyView)
 router.register('company', company_views.InviteEmployeeView)
 router.register('company', company_views.CreateCompanyView)

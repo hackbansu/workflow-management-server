@@ -75,7 +75,7 @@ class CreateCompanyView(CompanyBaseClassView):
         return response.Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class EmployeeCompanyView(UpdateModelMixin, DestroyModelMixin, CompanyBaseClassView):
+class EmployeeCompanyView(ListModelMixin, UpdateModelMixin, DestroyModelMixin, CompanyBaseClassView):
     '''
     my_company:
         Return company of employee
@@ -84,15 +84,20 @@ class EmployeeCompanyView(UpdateModelMixin, DestroyModelMixin, CompanyBaseClassV
     destroy:
         make user inactive in active company
     '''
-    serializer_class = company_serializer.EmployeeSerializer
-    permission_classes = (IsActiveCompanyAdmin,)
-
+    serializer_class = company_serializer.EmployeeAdminSerializer
+    permission_classes = (
+        company_permissions.IsActiveCompanyEmployee,
+        company_permissions.IsActiveCompanyAdmin,
+    )
+    filter_backends = (filters.DjangoFilterBackend,)
+    filter_fields = ('status', 'is_admin')
     def get_queryset(self):
         return self.queryset.filter(
             company=self.request.user.company
         )
 
     def perform_destroy(self, instance):
+        print instance
         if instance.status == common_constant.USER_STATUS.INVITED:
             instance.delete()
         elif instance.status == common_constant.USER_STATUS.ACTIVE:
@@ -131,21 +136,10 @@ class EmployeesView(ListModelMixin, GenericViewSet):
     def get_queryset(self):
         employee = self.request.user.active_employee
         qs = self.queryset.filter(
-            company=employee.company
+            company=employee.company,
+            status=common_constant.USER_STATUS.ACTIVE
         )
-        if not employee.is_admin:
-            return qs.filter(
-                status=common_constant.USER_STATUS.ACTIVE
-            )
         return qs
-
-
-class EmployeesAdminView(EmployeesView):
-    serializer_class = company_serializer.EmployeesAdminSerializer
-    permission_classes = (
-        company_permissions.IsActiveCompanyEmployee,
-        company_permissions.IsActiveCompanyAdmin,
-    )
 
 
 class InviteEmployeeView(GenericViewSet):
