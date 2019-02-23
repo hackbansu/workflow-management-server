@@ -98,7 +98,6 @@ class EmployeeCompanyView(ListModelMixin, UpdateModelMixin, DestroyModelMixin, C
         )
 
     def perform_destroy(self, instance):
-        print instance
         if instance.status == common_constant.USER_STATUS.INVITED:
             instance.delete()
         elif instance.status == common_constant.USER_STATUS.ACTIVE:

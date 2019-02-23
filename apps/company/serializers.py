@@ -407,5 +407,5 @@ class EmployeesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserCompany
-        fields = ('user', 'designation', 'is_admin', 'status', 'id')
-        read_only_fields = ('user', 'designation', 'is_admin', 'status', 'id')
+        fields = ('user', 'designation', 'is_admin', 'id')
+        read_only_fields = ('user', 'designation', 'is_admin', 'id')
