@@ -6,7 +6,7 @@ from django.db.models import Q
 from rest_framework import serializers
 from rest_framework.generics import get_object_or_404
 
-from apps.auth.serializers import UpdateUserSerializer, CreateUserSerializer, InviteUserSerializer
+from apps.auth.serializers import UpdateUserSerializer, CreateUserSerializer, InviteUserSerializer, BaseUserSerializer
 from apps.common import constant as common_constant
 from apps.company.models import Company, Link, UserCompany, UserCompanyCsv
 from apps.auth.serializers import ResetPasswordSerializer
@@ -33,7 +33,8 @@ class CompanySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Company
-        fields = ('id', 'name', 'address', 'city', 'state', 'logo', 'logo_url', 'status', 'links')
+        fields = ('id', 'name', 'address', 'city', 'state',
+                  'logo', 'logo_url', 'status', 'links')
         extra_kwargs = {
             'id': {
                 'read_only': True,
@@ -336,7 +337,7 @@ class InvitationSerializer(ResetPasswordSerializer):
         return super(InvitationSerializer, self).update(instance, validated_data)
 
 
-class EmployeeSerializer(serializers.ModelSerializer):
+class EmployeeAdminSerializer(serializers.ModelSerializer):
     '''
     Employee serializer to fetch company employees
     '''
@@ -344,7 +345,9 @@ class EmployeeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserCompany
-        fields = ['user', 'designation', 'is_admin', 'status', 'id']
+        fields = ('user', 'designation', 'is_admin',
+                  'status', 'id', 'join_at', 'left_at')
+        read_only_fields = ('join_at', 'left_at')
 
     def update(self, instance, validated_data):
         '''
@@ -397,3 +400,12 @@ class EmployeeCompanySerializer(serializers.ModelSerializer):
             company_serializer.is_valid(raise_exception=True)
             company_serializer.save()
         return super(EmployeeCompanySerializer, self).update(instance, validated_data)
+
+
+class EmployeesSerializer(serializers.ModelSerializer):
+    user = BaseUserSerializer()
+
+    class Meta:
+        model = UserCompany
+        fields = ('user', 'designation', 'is_admin', 'id')
+        read_only_fields = ('user', 'designation', 'is_admin', 'id')
