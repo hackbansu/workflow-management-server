@@ -45,10 +45,10 @@ class TaskUpdateSerializer(TaskBaseSerializer):
 
     def validate_start_delta(self, value):
         '''
-        validates that start delta could not be updated for ongoing task.
+        validates that start delta could not be updated for ongoing task and if parent task is completed.
         '''
         instance = self.instance
-        if instance.status == common_constant.TASK_STATUS.ONGOING:
+        if instance.status == common_constant.TASK_STATUS.ONGOING or instance.parent_task.completed_at:
             raise serializers.ValidationError(generate_error('start delta could not be updated for ongoing task'))
 
         return value
@@ -155,8 +155,8 @@ class WorkflowAccessCreateSerializer(WorkflowAccessBaseSerializer):
 class WorkflowBaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Workflow
-        fields = ('id', 'template', 'name', 'creator', 'start_at', 'complete_at',)
-        read_only_fields = ('id', 'creator', 'complete_at')
+        fields = ('id', 'template', 'name', 'creator', 'start_at', 'completed_at',)
+        read_only_fields = ('id', 'creator', 'completed_at')
 
     def validate_start_at(self, start_at):
         '''
@@ -235,6 +235,7 @@ class WorkflowCreateSerializer(WorkflowBaseSerializer):
             person['write_permission'] = instance.permission == common_constant.PERMISSION.READ_WRITE
 
         workflow.send_mail(people_assiciated, is_updated=False)
+        workflow.initialize()
 
         return workflow
 

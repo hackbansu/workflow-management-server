@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import logging
+
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.utils import timezone
@@ -18,9 +20,12 @@ from apps.company.permissions import (IsActiveCompanyEmployee, IsCompanyAdmin)
 from apps.workflow import permissions as workflow_permissions
 from apps.workflow import serializers as workflow_serializers
 from apps.workflow.models import Workflow, Task, WorkflowAccess
+from apps.workflow.tasks import start_task
 
 User = get_user_model()
 UPDATE_METHODS = ('PATCH', 'PUT')
+
+logger = logging.getLogger(__name__)
 
 
 class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, UpdateModelMixin, GenericViewSet):
@@ -90,3 +95,31 @@ class TaskULView(RetrieveModelMixin, UpdateModelMixin, ListModelMixin, GenericVi
             return self.queryset.filter(workflow__creator__company=employee.company)
 
         return self.queryset.filter(Q(assignee=employee) | Q(workflow__accessors__employee=employee)).distinct()
+
+    @action(detail=True, methods=['patch'], url_path='completed')
+    def mark_task_completion(self, request, *args, **kwargs):
+        '''
+        Mark task as completed and intiate next task after its start delta
+        '''
+        task_instance = self.get_object()
+        # bad request if task is not ongoing.
+        if(not task_instance.status == common_constant.TASK_STATUS.ONGOING):
+            return response.Response(status=status.HTTP_400_BAD_REQUEST)
+
+        task_instance.status = common_constant.TASK_STATUS.COMPLETE
+        task_instance.completed_at = timezone.now()
+        task_instance.save()
+
+        # get the next task
+        next_task = Task.objects.filter(parent_task=task_instance)
+
+        if next_task.exists():
+            # call celery task to initiate next task after it's start delta
+            next_task = next_task[0]
+            start_task.apply_async((next_task), eta=task_instance.completed_at + next_task.start_delta)
+        else:
+            # mark workflow as completed
+            task_instance.workflow.completed_at = timezone.now()
+            logger.info('Workflow %s is now complete' % (task_instance.workflow.name))
+
+        return response.Response(status=status.HTTP_200_OK)

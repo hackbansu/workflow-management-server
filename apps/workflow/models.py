@@ -9,9 +9,9 @@ from django.contrib.postgres.fields import CICharField
 from django.db import models
 
 from apps.common import constant as common_constant
-from apps.workflow_template.models import WorkflowTemplate
 from apps.company.models import UserCompany
-
+from apps.workflow.tasks import start_workflow
+from apps.workflow_template.models import WorkflowTemplate
 
 User = get_user_model()
 
@@ -26,7 +26,7 @@ class Workflow(models.Model):
     name = CICharField(max_length=256)
     creator = models.ForeignKey(to=UserCompany, on_delete=models.PROTECT)
     start_at = models.DateTimeField()
-    complete_at = models.DateTimeField(
+    completed_at = models.DateTimeField(
         null=True,
         blank=True,
         help_text='time when workflow completed'
@@ -37,6 +37,9 @@ class Workflow(models.Model):
             workflow_name=self.name,
             creator=self.creator_id
         )
+
+    def initialize(self):
+        start_workflow.apply_async((self), eta=self.start_at)
 
     def send_mail(self, associated_people_details, is_updated):
         '''
