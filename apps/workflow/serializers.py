@@ -96,15 +96,6 @@ class TaskUpdateSerializer(TaskBaseSerializer):
 
         return data
 
-    def update(self, instance, validated_data):
-        '''
-        override to send mail on task update.
-        '''
-        instance = super(TaskUpdateSerializer, self).update(instance, validated_data)
-        instance.send_mail()
-
-        return instance
-
 
 class WorkflowAccessBaseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -139,7 +130,7 @@ class WorkflowAccessCreateSerializer(WorkflowAccessBaseSerializer):
 
     def create(self, validated_data):
         '''
-        override to create or update accessor instance.
+        override to create or update accessor instance and send mail.
         '''
         instance, created = WorkflowAccess.objects.get_or_create(
             employee=validated_data['employee'],
@@ -254,11 +245,3 @@ class WorkflowUpdateSerializer(WorkflowBaseSerializer):
     '''
     class Meta(WorkflowBaseSerializer.Meta):
         read_only_fields = WorkflowBaseSerializer.Meta.read_only_fields + ('template',)
-
-    def update(self, instance, validated_data):
-        '''
-        override due to sending mails on update
-        '''
-        instance = super(WorkflowUpdateSerializer, self).update(instance, validated_data)
-        instance.send_mail(associated_people_details=None, is_updated=True)
-        return instance
