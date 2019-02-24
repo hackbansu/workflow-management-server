@@ -28,6 +28,7 @@ class Workflow(models.Model):
     start_at = models.DateTimeField()
     complete_at = models.DateTimeField(
         null=True,
+        blank=True,
         help_text='time when workflow completed'
     )
 
@@ -81,14 +82,15 @@ class Task(models.Model):
         'self',
         on_delete=models.SET_NULL,
         null=True,
-        related_name='child'
+        related_name='child',
+        blank=True
     )
     assignee = models.ForeignKey(
         UserCompany,
         on_delete=models.PROTECT,
         related_name='tasks'
     )
-    completed_at = models.DateTimeField(null=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
     start_delta = models.DurationField(
         default=timedelta(0),
         help_text='time delay between completion of parent task and star of current task'
