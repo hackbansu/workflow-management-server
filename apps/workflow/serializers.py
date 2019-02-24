@@ -1,16 +1,19 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from django.conf import settings
-from django.utils import timezone
+from datetime import timedelta
 
 from django.db.transaction import atomic
+from django.conf import settings
+from django.utils import timezone
 
 from rest_framework import serializers
 
 from apps.common import constant as common_constant
+from apps.common.helper import generate_error
 from apps.company.models import UserCompany
 from apps.company.serializers import UserCompanySerializer
+from apps.workflow.helpers import is_time_conflicting, is_task_conflicting, get_parent_start_time
 from apps.workflow.models import Workflow, Task, WorkflowAccess
 from apps.workflow_template.models import WorkflowTemplate
 from apps.workflow_template.serializers import WorkflowTemplateBaseSerializer as WorkflowTemplateBaseSerializer
@@ -31,7 +34,9 @@ class TaskUpdateSerializer(TaskBaseSerializer):
     def validate(self, data):
         '''
         Don't update assignee if user is only assignee and not admin or write accessor
-        Also check new assignee is of the same company
+        Check new assignee is of the same company and is an active employee
+        Check that user can't update start_delta of the ongoing task
+        Check task time conflict
         '''
         employee = self.context['request'].user.active_employee
         instance = self.instance
@@ -42,13 +47,34 @@ class TaskUpdateSerializer(TaskBaseSerializer):
             permission=common_constant.PERMISSION.READ_WRITE
         ).exists())
         if isOnlyAssignee:
-            raise serializers.ValidationError('Assignee does not have permissions to update assignee of the task')
+            raise serializers.ValidationError(
+                generate_error('Assignee does not have permissions to update assignee of the task')
+            )
+
+        if instance.status == common_constant.TASK_STATUS.ONGOING and data.get('start_delta'):
+            raise serializers.ValidationError(generate_error('start delta could not be updated for ongoing task'))
 
         if data.get('assignee'):
             if not data['assignee'].company == employee.company:
-                raise serializers.ValidationError('New assignee must be of the same company')
+                raise serializers.ValidationError(generate_error('New assignee must be of the same company'))
             if not data['assignee'].is_active:
-                raise serializers.ValidationError('Assignee must be an active employee')
+                raise serializers.ValidationError(generate_error('Assignee must be an active employee'))
+
+        # check task conflicting if start_delta or duration is updated
+        if(data.get('start_delta') or data.get('duration')):
+            # calculate expected start time of the task
+            task_start_time = data.get('start_delta', instance.start_delta)
+            task_parent = instance.parent_task
+            if(task_parent):
+                task_start_time += get_parent_start_time(task_parent)
+            else:
+                task_start_time += instance.workflow.start_at
+            task_end_time = task_start_time + data.get('duration', instance.duration)
+            employee = data.get('assignee', instance.assignee)
+            if is_task_conflicting(employee, task_start_time, task_end_time, ignore_tasks_ids=[instance.id]):
+                raise serializers.ValidationError(generate_error(
+                    'Task time conflict occurred for user {email}'.format(email=employee.user.email)
+                ))
 
         return data
 
@@ -86,9 +112,9 @@ class WorkflowAccessCreateSerializer(WorkflowAccessBaseSerializer):
         checks that employee belong to the same company as of the user and is active.
         '''
         if not self.context['request'].user.company == data['employee'].company:
-            raise serializers.ValidationError('Employee must be of the same company')
+            raise serializers.ValidationError(generate_error('Employee must be of the same company'))
         if not data['employee'].is_active:
-            raise serializers.ValidationError('Employee must be an active employee')
+            raise serializers.ValidationError(generate_error('Employee must be an active employee'))
 
         return data
 
@@ -127,7 +153,7 @@ class WorkflowBaseSerializer(serializers.ModelSerializer):
         Validate the start date and time is after current date and time.
         '''
         if data['start_at'] < timezone.now():
-            raise serializers.ValidationError('start date can not be earlier than current time.')
+            raise serializers.ValidationError(generate_error('start date can not be earlier than current time.'))
 
         return data
 
@@ -141,7 +167,8 @@ class WorkflowCreateSerializer(WorkflowBaseSerializer):
 
     def validate(self, data):
         '''
-        Validates that the assignees and accessors all belong to the same company as of the creator.
+        Validates that the assignees and accessors all belong to the same company as of the creator and are all active
+        employees. Also validate that tasks of assignees don't conflict with their other tasks.
         '''
         super(WorkflowCreateSerializer, self).validate(data)
 
@@ -151,17 +178,31 @@ class WorkflowCreateSerializer(WorkflowBaseSerializer):
         tasks = data.get('tasks', [])
         for task in tasks:
             if not task['assignee'].company == employee.company:
-                raise serializers.ValidationError('Assignees must be of the same company')
+                raise serializers.ValidationError(generate_error('Assignees must be of the same company'))
             if not task['assignee'].is_active:
-                raise serializers.ValidationError('Assignees must be an active employee')
+                raise serializers.ValidationError(generate_error('Assignees must be an active employee'))
 
         # validate that the accessors are of the same company as that of the user and are active employees
         accessors = data.get('accessors', [])
         for accessor in accessors:
             if not accessor['employee'].company == employee.company:
-                raise serializers.ValidationError('Accessor must be of the same company')
+                raise serializers.ValidationError(generate_error('Accessor must be of the same company'))
             if not accessor['employee'].is_active:
-                raise serializers.ValidationError('Accessor must be an active employee')
+                raise serializers.ValidationError(generate_error('Accessor must be an active employee'))
+
+        # validate that every assignee's other tasks don't conflict
+        visited_assignees = {}
+        prev_task_end_time = data['start_at']
+        for task in tasks:
+            task_start_time = prev_task_end_time + task['start_delta']
+            task_end_time = task_start_time + task['duration']
+            employee = task['assignee']
+            if is_task_conflicting(employee, task_start_time, task_end_time, visited_assignees):
+                raise serializers.ValidationError(generate_error(
+                    'Task time conflict occurred for user {email}'.format(email=employee.user.email)
+                ))
+
+            prev_task_end_time = task_end_time
 
         return data
 

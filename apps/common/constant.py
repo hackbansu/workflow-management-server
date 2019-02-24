@@ -14,7 +14,7 @@ LINK_TYPE = namedtuple(
 )._make([1, 2, 3])
 TASK_STATUS = namedtuple(
     'TASK_STATUS',
-    'UPCOMMING ONGOING COMPLETE'
+    'UPCOMING ONGOING COMPLETE'
 )._make([1, 2, 3])
 PERMISSION = namedtuple(
     'PERMISSION',

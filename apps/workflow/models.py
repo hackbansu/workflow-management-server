@@ -90,11 +90,9 @@ class Task(models.Model):
     )
     completed_at = models.DateTimeField(null=True)
     start_delta = models.DurationField(
-        default=timedelta(0),
         help_text='time delay between completion of parent task and star of current task'
     )
     duration = models.DurationField(
-        default=timedelta(0),
         help_text='expected duration of the task'
     )
     status = models.PositiveIntegerField(
@@ -102,7 +100,7 @@ class Task(models.Model):
             common_constant.TASK_STATUS,
             common_constant.TASK_STATUS._fields
         )),
-        default=common_constant.TASK_STATUS.UPCOMMING
+        default=common_constant.TASK_STATUS.UPCOMING
     )
 
     def __unicode__(self):
