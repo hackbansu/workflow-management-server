@@ -10,7 +10,7 @@ class WorkflowAdmin(admin.ModelAdmin):
     '''
     workflow admin to be used with django admin app.
     '''
-    list_display = ('id', 'template', 'name', 'creator', 'start_at', 'complete_at', 'duration')
+    list_display = ('id', 'template', 'name', 'creator', 'start_at', 'complete_at')
 
 
 class TaskAdmin(admin.ModelAdmin):

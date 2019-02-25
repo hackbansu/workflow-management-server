@@ -51,8 +51,8 @@ INSTALLED_APPS = [
 
     'apps.auth.apps_config.AuthConfig',
     'apps.company.apps_config.CompanyConfig',
-    'apps.workflow_template.apps_config.WorkflowTemplateConfig',
-    'apps.workflow.apps_config.WorkflowConfig'
+    'apps.workflow.apps_config.WorkflowConfig',
+    'apps.workflow_template.apps_config.WorkflowTemplateConfig'
 
 ]
 
