@@ -261,7 +261,7 @@ class WorkflowUpdateSerializer(WorkflowBaseSerializer):
         '''
         override to check that user can't update start time within few hours of workflow start time.
         '''
-        super(WorkflowUpdateSerializer, self).validate_start_at(value)
+        value = super(WorkflowUpdateSerializer, self).validate_start_at(value)
 
         instance = self.instance
         if not instance.status == common_constant.WORKFLOW_STATUS.INITIATED:
@@ -269,7 +269,7 @@ class WorkflowUpdateSerializer(WorkflowBaseSerializer):
 
         if instance.start_at - timezone.now() < timedelta(hours=common_constant.WORKFLOW_START_UPDATE_THRESHOLD_HOURS):
             raise serializers.ValidationError(
-                generate_error('could not update start time as workflow will start within 2 hours')
+                generate_error('could not update start time as workflow will start soon')
             )
 
         return value

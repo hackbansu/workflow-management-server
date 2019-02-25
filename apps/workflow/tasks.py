@@ -14,47 +14,90 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task
-def start_task(task):
-    task.status = common_constant.TASK_STATUS.ONGOING
-    task.save()
+def start_workflow(workflow_id):
+    '''
+    Marks the workflow to be inprogress.
+
+    Arguments:
+        workflow_id {int} -- id of the workflow to start
+    '''
+
+    workflow = Workflow.objects.get(pk=workflow_id)
+    workflow.status = common_constant.WORKFLOW_STATUS.INPROGRESS
+    workflow.save(update_fields=['status'])
 
 
 @shared_task
-def start_workflow(workflow):
-    workflow.status = common_constant.WORKFLOW_STATUS.INPROGRESS
-    workflow.save()
+def start_task(task_id):
+    '''
+    Marks the task as ongoing.
+
+    Arguments:
+        task_id {int} -- id of the task to start
+    '''
+
+    task = Task.objects.get(pk=task_id)
+    task.status = common_constant.TASK_STATUS.ONGOING
+    task.save(update_fields=['status'])
 
 
-@task
+@shared_task
 def start_workflows_periodic():
+    '''
+    Periodic task to schedule workflows to start who's start time is below some threshold.
+    '''
+
     current_time = timezone.now()
-    logger.info('workflows periodic task executing')
-    workflows = Workflow.objects.filter(start_at__lt=current_time + timedelta(
-        hours=common_constant.WORKFLOW_START_UPDATE_THRESHOLD_HOURS
-    ))
+    workflows = Workflow.objects.filter(
+        status=common_constant.WORKFLOW_STATUS.INITIATED,
+        start_at__lt=current_time + timedelta(hours=common_constant.WORKFLOW_START_UPDATE_THRESHOLD_HOURS)
+    )
     for workflow in workflows.all():
-        start_workflow.apply_async((workflow), eta=workflow.start_at)
+        eta = workflow.start_at if workflow.start_at > current_time else timezone.now() + timedelta(seconds=10)
+        start_workflow.apply_async((workflow.id,), eta=eta)
+
+    workflows.update(status=common_constant.WORKFLOW_STATUS.SCHEDULED)
 
 
-@task
-def start_tasks_periodic():
-    logger.info('tasks periodic task executing')
-    print "hey tasks"
+def schedule_tasks_helper(tasks, is_parent_available):
+    '''
+    Helper function for scheduling tasks.
+
+    Arguments:
+        tasks {QuerySet} -- queryset containing the tasks to check for their start time
+    '''
+
     current_time = timezone.now()
+    for task in tasks.all():
+        if task.parent_task:
+            delta_time = task.parent_task.completed_at + task.start_delta - current_time
+        else:
+            delta_time = task.workflow.start_at + task.start_delta - current_time
+
+        if (delta_time < timedelta(minutes=common_constant.TASK_START_UPDATE_THRESHOLD_MINUTES)):
+            if delta_time < timedelta(seconds=0):
+                delta_time = timedelta(seconds=10)
+            start_task.apply_async((task.id,), countdown=delta_time.seconds)
+        else:
+            tasks.exclude(pk=task.id)
+
+    tasks.update(status=common_constant.TASK_STATUS.SCHEDULED)
+
+
+@shared_task
+def start_tasks_periodic():
+    '''
+    Periodic function to schedule tasks to start who's start time is below some threshold.
+    '''
+
     # get tasks that have parent
-    tasks = Task.objects.filter(completed_at__isnull=True,
+    tasks = Task.objects.filter(status=common_constant.TASK_STATUS.UPCOMING,
                                 parent_task__isnull=False,
                                 parent_task__status=common_constant.TASK_STATUS.COMPLETE)
-    for task in tasks.all():
-        delta_time = task.parent_task.completed_at + task.start_delta - current_time
-        if (delta_time < timedelta(minutes=common_constant.TASK_START_UPDATE_THRESHOLD_MINUTES)):
-            start_task.apply_async((task), countdown=delta_time)
+    schedule_tasks_helper(tasks)
 
     # get tasks that don't have parent, i.e. are first tasks of their workflows
-    tasks = Task.objects.filter(completed_at__isnull=True,
+    tasks = Task.objects.filter(status=common_constant.TASK_STATUS.UPCOMING,
                                 parent_task__isnull=True,
                                 workflow__status=common_constant.WORKFLOW_STATUS.INPROGRESS)
-    for task in tasks.all():
-        delta_time = task.workflow.start_at + task.start_delta - current_time
-        if (delta_time < timedelta(minutes=common_constant.TASK_START_UPDATE_THRESHOLD_MINUTES)):
-            start_task.apply_async((task), countdown=delta_time)
+    schedule_tasks_helper(tasks)

@@ -14,12 +14,12 @@ LINK_TYPE = namedtuple(
 )._make([1, 2, 3])
 WORKFLOW_STATUS = namedtuple(
     'WORKFLOW_STATUS',
-    'INITIATED INPROGRESS COMPLETE'
-)._make([1, 2, 3])
+    'INITIATED SCHEDULED INPROGRESS COMPLETE'
+)._make([1, 2, 3, 4])
 TASK_STATUS = namedtuple(
     'TASK_STATUS',
-    'UPCOMING ONGOING COMPLETE'
-)._make([1, 2, 3])
+    'UPCOMING SCHEDULED ONGOING COMPLETE'
+)._make([1, 2, 3, 4])
 PERMISSION = namedtuple(
     'PERMISSION',
     'READ READ_WRITE'

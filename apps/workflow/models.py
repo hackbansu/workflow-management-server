@@ -44,7 +44,7 @@ class Workflow(models.Model):
             creator=self.creator_id
         )
 
-    def send_mail(self, associated_people_details, is_updated):
+    def send_mail(self, associated_people_details, is_updated=False, is_started=False, is_completed=False):
         '''
         send workflow created/shared/updated mail.
         '''
@@ -60,6 +60,8 @@ class Workflow(models.Model):
         for key, person in associated_people_details.iteritems():
             context = {
                 'is_updated': is_updated,
+                'is_started': is_started,
+                'is_completed': is_completed,
                 'is_creator': person.get('is_creator', False),
                 'is_shared': person.get('is_shared', False),
                 'name': person['employee'].user.name,
