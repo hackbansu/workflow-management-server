@@ -10,7 +10,6 @@ from django.db import models
 
 from apps.common import constant as common_constant
 from apps.company.models import UserCompany
-from apps.workflow.tasks import start_workflow
 from apps.workflow_template.models import WorkflowTemplate
 
 User = get_user_model()
@@ -31,15 +30,19 @@ class Workflow(models.Model):
         blank=True,
         help_text='time when workflow completed'
     )
+    status = models.PositiveIntegerField(
+        choices=(choice for choice in zip(
+            common_constant.WORKFLOW_STATUS,
+            common_constant.WORKFLOW_STATUS._fields
+        )),
+        default=common_constant.WORKFLOW_STATUS.INITIATED
+    )
 
     def __unicode__(self):
         return '{workflow_name}-#-{creator}'.format(
             workflow_name=self.name,
             creator=self.creator_id
         )
-
-    def initialize(self):
-        start_workflow.apply_async((self), eta=self.start_at)
 
     def send_mail(self, associated_people_details, is_updated):
         '''
@@ -114,24 +117,26 @@ class Task(models.Model):
             workflow_id=self.workflow_id
         )
 
-    def send_mail(self):
+    def send_mail(self, is_started=False, is_completed=False):
         '''
-        send update task mail.
+        send task start/update mail.
         '''
         context = {
             'task_title': self.title,
             'workflow_name': self.workflow.name,
             'name': self.assignee.user.name,
+            'is_started': is_started,
+            'is_completed': is_completed
         }
 
         # send mail to the assignee
         self.assignee.user.email_user('task.txt', 'task.html', 'Task Update', context)
-        logger.info('Task new/update mail send to {email}'.format(email=self.assignee.user.email))
+        logger.info('Task start/update mail send to {email}'.format(email=self.assignee.user.email))
 
-        # send mail to the  creator
+        # send mail to the  creator if task is updated
         context['name'] = self.workflow.creator.user.name
         self.workflow.creator.user.email_user('task.txt', 'task.html', 'Task Update', context)
-        logger.info('Task new/update mail send to {email}'.format(email=self.assignee.user.email))
+        logger.info('Task start/update mail send to {email}'.format(email=self.assignee.user.email))
 
 
 class WorkflowAccess(models.Model):

@@ -48,8 +48,19 @@ class TaskUpdateSerializer(TaskBaseSerializer):
         validates that start delta could not be updated for ongoing task and if parent task is completed.
         '''
         instance = self.instance
-        if instance.status == common_constant.TASK_STATUS.ONGOING or instance.parent_task.completed_at:
+        if instance.status == common_constant.TASK_STATUS.ONGOING:
             raise serializers.ValidationError(generate_error('start delta could not be updated for ongoing task'))
+
+        delta_time = None
+        if instance.parent_task and instance.parent_task.status == common_constant.TASK_STATUS.COMPLETE:
+            delta_time = instance.parent_task.completed_at + instance.start_delta - timezone.now()
+        if not instance.parent_task and instance.workflow.status == common_constant.WORKFLOW_STATUS.INPROGRESS:
+            delta_time = instance.workflow.start_at + instance.start_delta - timezone.now()
+
+        if delta_time and delta_time < timedelta(minutes=common_constant.TASK_START_UPDATE_THRESHOLD_MINUTES):
+            raise serializers.ValidationError(
+                generate_error('could not update start delta as the task will start soon')
+            )
 
         return value
 
@@ -155,8 +166,8 @@ class WorkflowAccessCreateSerializer(WorkflowAccessBaseSerializer):
 class WorkflowBaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Workflow
-        fields = ('id', 'template', 'name', 'creator', 'start_at', 'completed_at',)
-        read_only_fields = ('id', 'creator', 'completed_at')
+        fields = ('id', 'template', 'name', 'creator', 'start_at', 'completed_at', 'status')
+        read_only_fields = ('id', 'creator', 'completed_at', 'status')
 
     def validate_start_at(self, start_at):
         '''
@@ -235,7 +246,6 @@ class WorkflowCreateSerializer(WorkflowBaseSerializer):
             person['write_permission'] = instance.permission == common_constant.PERMISSION.READ_WRITE
 
         workflow.send_mail(people_assiciated, is_updated=False)
-        workflow.initialize()
 
         return workflow
 
@@ -246,3 +256,20 @@ class WorkflowUpdateSerializer(WorkflowBaseSerializer):
     '''
     class Meta(WorkflowBaseSerializer.Meta):
         read_only_fields = WorkflowBaseSerializer.Meta.read_only_fields + ('template',)
+
+    def validate_start_at(self, value):
+        '''
+        override to check that user can't update start time within few hours of workflow start time.
+        '''
+        super(WorkflowUpdateSerializer, self).validate_start_at(value)
+
+        instance = self.instance
+        if not instance.status == common_constant.WORKFLOW_STATUS.INITIATED:
+            raise serializers.ValidationError(generate_error('cannot update start at as workflow is in progress.'))
+
+        if instance.start_at - timezone.now() < timedelta(hours=common_constant.WORKFLOW_START_UPDATE_THRESHOLD_HOURS):
+            raise serializers.ValidationError(
+                generate_error('could not update start time as workflow will start within 2 hours')
+            )
+
+        return value

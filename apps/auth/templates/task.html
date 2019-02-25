@@ -13,7 +13,15 @@
         <main>
             <p>Hi {{ name }}</p>
             <p>
-                {{ task_title }} task of the {{ workflow_name }} workflow has been updated.
+                {{ task_title }} task of the {{ workflow_name }} workflow has been
+                {% if is_started %}
+                started
+                {% elif is_completed %}
+                completed
+                {% else %}
+                updated
+                {% endif %}
+                .
             </p>
         </main>
     </body>

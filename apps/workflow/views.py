@@ -20,7 +20,6 @@ from apps.company.permissions import (IsActiveCompanyEmployee, IsCompanyAdmin)
 from apps.workflow import permissions as workflow_permissions
 from apps.workflow import serializers as workflow_serializers
 from apps.workflow.models import Workflow, Task, WorkflowAccess
-from apps.workflow.tasks import start_task
 
 User = get_user_model()
 UPDATE_METHODS = ('PATCH', 'PUT')
@@ -99,7 +98,7 @@ class TaskULView(RetrieveModelMixin, UpdateModelMixin, ListModelMixin, GenericVi
     @action(detail=True, methods=['patch'], url_path='completed')
     def mark_task_completion(self, request, *args, **kwargs):
         '''
-        Mark task as completed and intiate next task after its start delta
+        Mark task as completed and intiate next task after its start delta.
         '''
         task_instance = self.get_object()
         # bad request if task is not ongoing.
@@ -110,16 +109,11 @@ class TaskULView(RetrieveModelMixin, UpdateModelMixin, ListModelMixin, GenericVi
         task_instance.completed_at = timezone.now()
         task_instance.save()
 
-        # get the next task
-        next_task = Task.objects.filter(parent_task=task_instance)
-
-        if next_task.exists():
-            # call celery task to initiate next task after it's start delta
-            next_task = next_task[0]
-            start_task.apply_async((next_task), eta=task_instance.completed_at + next_task.start_delta)
-        else:
+        if not Task.objects.filter(parent_task=task_instance).exists():
             # mark workflow as completed
+            task_instance.workflow.status = common_constant.WORKFLOW_STATUS.COMPLETE
             task_instance.workflow.completed_at = timezone.now()
+            task_instance.workflow.save()
             logger.info('Workflow %s is now complete' % (task_instance.workflow.name))
 
         return response.Response(status=status.HTTP_200_OK)

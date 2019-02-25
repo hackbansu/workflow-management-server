@@ -205,5 +205,6 @@ SWAGGER_SETTINGS = {
 
 try:
     from workflow_platform.settings.settings_local import *
-except Exception:
+except ImportError:
+    print 'Local settings not imported !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
     pass
