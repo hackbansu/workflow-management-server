@@ -141,3 +141,7 @@ def parse_invite_csv(file):
             return None
 
     return data
+
+
+def generate_error(error_msg):
+    return {'detail': error_msg}

@@ -76,6 +76,10 @@ class TaskAccessPermission(company_permissions.IsActiveCompanyEmployee, hasWorkf
         if request.method not in SAFE_METHODS:
             retVal = super(TaskAccessPermission, self).has_object_permission(request, view, obj.workflow)
             retVal = obj.assignee == employee_record or retVal
+
+            if request.method == 'PUT' or request.method == 'PATCH':
+                retVal = retVal and not obj.status == common_constant.TASK_STATUS.COMPLETE
+
             return retVal
 
         return True
