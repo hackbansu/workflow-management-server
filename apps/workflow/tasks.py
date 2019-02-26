@@ -5,6 +5,7 @@ from celery import task, shared_task
 from datetime import timedelta
 import logging
 
+from django.db.transaction import atomic
 from django.utils import timezone
 
 from apps.common import constant as common_constant
@@ -14,9 +15,11 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task
+@atomic
 def start_workflow(workflow_id):
     '''
     Marks the workflow to be inprogress.
+    Also start the first task if it's start delta is less than celery scheduled task schedule
 
     Arguments:
         workflow_id {int} -- id of the workflow to start
@@ -26,8 +29,15 @@ def start_workflow(workflow_id):
     workflow.status = common_constant.WORKFLOW_STATUS.INPROGRESS
     workflow.save(update_fields=['status'])
 
+    first_task = workflow.tasks.filter(parent_task__isnull=True)[0]
+    if first_task.start_delta < timedelta(seconds=common_constant.TASK_PERIODIC_TASK_SCHEDULE_SECONDS):
+        first_task.status = common_constant.TASK_STATUS.SCHEDULED
+        first_task.save()
+        start_task.apply_async((first_task.id,), countdown=first_task.start_delta.seconds)
+
 
 @shared_task
+@atomic
 def start_task(task_id):
     '''
     Marks the task as ongoing.
@@ -42,11 +52,11 @@ def start_task(task_id):
 
 
 @shared_task
+@atomic
 def start_workflows_periodic():
     '''
     Periodic task to schedule workflows to start who's start time is below some threshold.
     '''
-
     current_time = timezone.now()
     workflows = Workflow.objects.filter(
         status=common_constant.WORKFLOW_STATUS.INITIATED,
@@ -58,8 +68,8 @@ def start_workflows_periodic():
 
     workflows.update(status=common_constant.WORKFLOW_STATUS.SCHEDULED)
 
-
-def schedule_tasks_helper(tasks, is_parent_available):
+@atomic
+def schedule_tasks_helper(tasks):
     '''
     Helper function for scheduling tasks.
 
@@ -74,7 +84,7 @@ def schedule_tasks_helper(tasks, is_parent_available):
         else:
             delta_time = task.workflow.start_at + task.start_delta - current_time
 
-        if (delta_time < timedelta(minutes=common_constant.TASK_START_UPDATE_THRESHOLD_MINUTES)):
+        if (delta_time < timedelta(hours=common_constant.TASK_START_UPDATE_THRESHOLD_HOURS)):
             if delta_time < timedelta(seconds=0):
                 delta_time = timedelta(seconds=10)
             start_task.apply_async((task.id,), countdown=delta_time.seconds)

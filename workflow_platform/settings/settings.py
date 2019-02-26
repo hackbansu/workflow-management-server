@@ -11,7 +11,12 @@ https://docs.djangoproject.com/en/1.11/ref/settings/
 """
 
 import os
+import logging
 import logging.config
+
+from apps.common import constant as common_constant
+
+logger = logging.getLogger(__name__)
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -203,8 +208,18 @@ SWAGGER_SETTINGS = {
     'LOGOUT_URL': '/api/auth/logout/'
 }
 
+CELERY_BEAT_SCHEDULE = {
+    'start-workflows-periodic': {
+        'task': 'apps.workflow.tasks.start_workflows_periodic',
+        'schedule': common_constant.WORKFLOW_PERIODIC_TASK_SCHEDULE_SECONDS
+    },
+    'start-tasks-periodic': {
+        'task': 'apps.workflow.tasks.start_tasks_periodic',
+        'schedule': common_constant.TASK_PERIODIC_TASK_SCHEDULE_SECONDS
+    }
+}
+
 try:
     from workflow_platform.settings.settings_local import *
 except ImportError:
-    print 'Local settings not imported !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
-    pass
+    logger.warning('Local settings not loaded')

@@ -15,6 +15,7 @@ from apps.company.models import UserCompany
 from apps.company.serializers import UserCompanySerializer
 from apps.workflow.helpers import is_time_conflicting, is_task_conflicting, get_parent_start_time
 from apps.workflow.models import Workflow, Task, WorkflowAccess
+from apps.workflow.tasks import start_workflow
 from apps.workflow_template.models import WorkflowTemplate
 from apps.workflow_template.serializers import WorkflowTemplateBaseSerializer as WorkflowTemplateBaseSerializer
 
@@ -57,7 +58,7 @@ class TaskUpdateSerializer(TaskBaseSerializer):
         if not instance.parent_task and instance.workflow.status == common_constant.WORKFLOW_STATUS.INPROGRESS:
             delta_time = instance.workflow.start_at + instance.start_delta - timezone.now()
 
-        if delta_time and delta_time < timedelta(minutes=common_constant.TASK_START_UPDATE_THRESHOLD_MINUTES):
+        if delta_time and delta_time < timedelta(hours=common_constant.TASK_START_UPDATE_THRESHOLD_HOURS):
             raise serializers.ValidationError(
                 generate_error('could not update start delta as the task will start soon')
             )
@@ -139,6 +140,7 @@ class WorkflowAccessCreateSerializer(WorkflowAccessBaseSerializer):
         fields = WorkflowAccessBaseSerializer.Meta.fields + ('workflow',)
         read_only_fields = WorkflowAccessBaseSerializer.Meta.read_only_fields + ('workflow',)
 
+    @atomic
     def create(self, validated_data):
         '''
         override to create or update accessor instance and send mail.
@@ -209,7 +211,8 @@ class WorkflowCreateSerializer(WorkflowBaseSerializer):
     @atomic
     def create(self, validated_data):
         '''
-        override due to nested writes
+        override due to nested writes. Also start workflow if it's start time delta is less than celery scheduled task
+        schedule
         '''
 
         tasks = validated_data.pop('tasks', [])
@@ -246,6 +249,15 @@ class WorkflowCreateSerializer(WorkflowBaseSerializer):
             person['write_permission'] = instance.permission == common_constant.PERMISSION.READ_WRITE
 
         workflow.send_mail(people_assiciated, is_updated=False)
+
+        # if workflow will start before celery scheduled task, send it's start task to celery
+        current_time = timezone.now()
+        delta_time = workflow.start_at - current_time
+        if(delta_time < timedelta(seconds=common_constant.WORKFLOW_PERIODIC_TASK_SCHEDULE_SECONDS)):
+            workflow.status = common_constant.WORKFLOW_STATUS.SCHEDULED
+            workflow.save()
+            eta = workflow.start_at if workflow.start_at > current_time else timezone.now() + timedelta(seconds=10)
+            start_workflow.apply_async((workflow.id,), eta=eta)
 
         return workflow
 
