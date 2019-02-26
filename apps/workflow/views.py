@@ -58,7 +58,7 @@ class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, Upd
         workflow's accessor create or update
         '''
         workflow_instance = self.get_object()
-        serializer = self.get_serializer(data=request.data, )
+        serializer = self.get_serializer(data=request.data,)
         serializer.is_valid(raise_exception=True)
         serializer.save(workflow=workflow_instance)
 
