@@ -95,6 +95,7 @@ class User(AbstractUser):
     )
     profile_photo = models.ImageField(
         upload_to=usr_profil_dir,
+        blank=True,
         default='user/profile/fallback.png',
         help_text='User profile photo'
     )
