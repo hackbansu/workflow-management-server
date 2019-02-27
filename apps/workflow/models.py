@@ -9,9 +9,8 @@ from django.contrib.postgres.fields import CICharField
 from django.db import models
 
 from apps.common import constant as common_constant
-from apps.workflow_template.models import WorkflowTemplate
 from apps.company.models import UserCompany
-
+from apps.workflow_template.models import WorkflowTemplate
 
 User = get_user_model()
 
@@ -26,10 +25,17 @@ class Workflow(models.Model):
     name = CICharField(max_length=256)
     creator = models.ForeignKey(to=UserCompany, on_delete=models.PROTECT)
     start_at = models.DateTimeField()
-    complete_at = models.DateTimeField(
+    completed_at = models.DateTimeField(
         null=True,
         blank=True,
         help_text='time when workflow completed'
+    )
+    status = models.PositiveIntegerField(
+        choices=(choice for choice in zip(
+            common_constant.WORKFLOW_STATUS,
+            common_constant.WORKFLOW_STATUS._fields
+        )),
+        default=common_constant.WORKFLOW_STATUS.INITIATED
     )
 
     def __unicode__(self):
@@ -38,7 +44,7 @@ class Workflow(models.Model):
             creator=self.creator_id
         )
 
-    def send_mail(self, associated_people_details, is_updated):
+    def send_mail(self, associated_people_details, is_updated=False, is_started=False, is_completed=False):
         '''
         send workflow created/shared/updated mail.
         '''
@@ -54,6 +60,8 @@ class Workflow(models.Model):
         for key, person in associated_people_details.iteritems():
             context = {
                 'is_updated': is_updated,
+                'is_started': is_started,
+                'is_completed': is_completed,
                 'is_creator': person.get('is_creator', False),
                 'is_shared': person.get('is_shared', False),
                 'name': person['employee'].user.name,
@@ -111,24 +119,26 @@ class Task(models.Model):
             workflow_id=self.workflow_id
         )
 
-    def send_mail(self):
+    def send_mail(self, is_started=False, is_completed=False):
         '''
-        send update task mail.
+        send task start/update mail.
         '''
         context = {
             'task_title': self.title,
             'workflow_name': self.workflow.name,
             'name': self.assignee.user.name,
+            'is_started': is_started,
+            'is_completed': is_completed
         }
 
         # send mail to the assignee
         self.assignee.user.email_user('task.txt', 'task.html', 'Task Update', context)
-        logger.info('Task new/update mail send to {email}'.format(email=self.assignee.user.email))
+        logger.info('Task start/update mail send to {email}'.format(email=self.assignee.user.email))
 
-        # send mail to the  creator
+        # send mail to the  creator if task is updated
         context['name'] = self.workflow.creator.user.name
         self.workflow.creator.user.email_user('task.txt', 'task.html', 'Task Update', context)
-        logger.info('Task new/update mail send to {email}'.format(email=self.assignee.user.email))
+        logger.info('Task start/update mail send to {email}'.format(email=self.assignee.user.email))
 
 
 class WorkflowAccess(models.Model):
