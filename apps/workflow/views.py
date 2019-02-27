@@ -71,7 +71,6 @@ class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, Upd
             workflow's accessor create or update
         '''
         workflow_instance = self.get_object()
-
         # update context for workflow instance.
         context = self.get_serializer_context()
         context['workflow'] = workflow_instance

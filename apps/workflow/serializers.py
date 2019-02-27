@@ -289,12 +289,18 @@ class WorkflowAccessUpdateSerializer(serializers.Serializer):
             ]
         )
 
+        logger.debug('same permission {}'.format(same_permissions))
+        logger.debug('delete permission {}'.format(delete_permissions))
+        logger.debug('existing permission {}'.format(existing_permissions))
+        logger.debug('new_permissions {}'.format(new_permissions))
+
+        
         # db operations
         delete_permissions.delete()
         bulk_update(existing_permissions, update_fields=['permission'])
         instances = WorkflowAccess.objects.bulk_create(new_permissions)
 
-        send_permission_mail.delay(map(lambda x: x.id, instances))
+        send_permission_mail.apply_async((map(lambda x: x.id, instances),))
 
         return instances
 
