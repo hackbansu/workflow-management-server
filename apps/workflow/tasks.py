@@ -34,7 +34,9 @@ def start_workflow(workflow_id):
         first_task.status = common_constant.TASK_STATUS.SCHEDULED
         first_task.save()
         start_task.apply_async(
-            (first_task.id,), countdown=first_task.start_delta.seconds)
+            (first_task.id,),
+            countdown=first_task.start_delta.seconds
+        )
 
 
 @shared_task
@@ -65,8 +67,7 @@ def start_workflows_periodic():
         timedelta(hours=common_constant.WORKFLOW_START_UPDATE_THRESHOLD_HOURS)
     )
     for workflow in workflows.all():
-        eta = workflow.start_at if workflow.start_at > current_time else timezone.now() + \
-            timedelta(seconds=10)
+        eta = workflow.start_at if workflow.start_at > current_time else timezone.now() + timedelta(seconds=10)
         start_workflow.apply_async((workflow.id,), eta=eta)
 
     workflows.update(status=common_constant.WORKFLOW_STATUS.SCHEDULED)
