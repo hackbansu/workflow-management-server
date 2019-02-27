@@ -53,6 +53,10 @@ class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, Upd
             url_path='accessor/all',
             serializer_class=workflow_serializers.WorkflowAccessBaseSerializer)
     def list_accessors(self, request, *args, **kwargs):
+        '''
+            list all accessors of workflow.
+        '''
+
         workflow_instance = self.get_object()
         serilizer = self.get_serializer(
             instance=workflow_instance.accessors.all(), many=True)
@@ -64,7 +68,7 @@ class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, Upd
             serializer_class=workflow_serializers.WorkflowAccessUpdateSerializer)
     def create_update_accessor(self, request, *args, **kwargs):
         '''
-        workflow's accessor create or update
+            workflow's accessor create or update
         '''
         workflow_instance = self.get_object()
 

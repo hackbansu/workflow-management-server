@@ -18,7 +18,7 @@ from apps.company.models import UserCompany
 from apps.company.serializers import UserCompanySerializer
 from apps.workflow.helpers import is_time_conflicting, is_task_conflicting, get_parent_start_time
 from apps.workflow.models import Workflow, Task, WorkflowAccess
-from apps.workflow.tasks import start_workflow
+from apps.workflow.tasks import start_workflow, send_permission_mail
 from apps.workflow_template.models import WorkflowTemplate
 from apps.workflow_template.serializers import WorkflowTemplateBaseSerializer as WorkflowTemplateBaseSerializer
 
@@ -63,13 +63,15 @@ class TaskUpdateSerializer(TaskBaseSerializer):
 
         delta_time = None
         if instance.parent_task and instance.parent_task.status == common_constant.TASK_STATUS.COMPLETE:
-            delta_time = instance.parent_task.completed_at + instance.start_delta - timezone.now()
+            delta_time = instance.parent_task.completed_at + \
+                instance.start_delta - timezone.now()
         if not instance.parent_task and instance.workflow.status == common_constant.WORKFLOW_STATUS.INPROGRESS:
             delta_time = instance.workflow.start_at + instance.start_delta - timezone.now()
 
         if delta_time and delta_time < timedelta(hours=common_constant.TASK_START_UPDATE_THRESHOLD_HOURS):
             raise serializers.ValidationError(
-                generate_error('could not update start delta as the task will start soon')
+                generate_error(
+                    'could not update start delta as the task will start soon')
             )
 
         return value
@@ -221,10 +223,23 @@ class WorkflowAccessUpdateSerializer(serializers.Serializer):
             )
         return value
 
-    def update(self, instance, validated_data):
+    def validate(self, attr):
+        read_permissions = attr['read_permissions']
+        write_permissions = attr['write_permissions']
+
+        # check for instersection.
+        s_read_permission = set(read_permissions)
+        if len([perm for perm in write_permissions if perm in s_read_permission]):
+            raise serializers.ValidationError(
+                generate_error('permissions must be exclusive')
+            )
+        return attr
+
+    def update(self, workflow, validated_data):
         read_permissions = validated_data['read_permissions']
         write_permissions = validated_data['write_permissions']
-        workflow = instance
+
+        logger.debug('read_permissions {}'.format(read_permissions))
 
         all_permissions = WorkflowAccess.objects.filter(workflow=workflow)
 
@@ -233,18 +248,27 @@ class WorkflowAccessUpdateSerializer(serializers.Serializer):
             Q(employee__in=write_permissions)
         )
 
-        delete_permission = all_permissions.difference(existing_permissions)
-        delete_permission.delete()
+        delete_permissions = all_permissions.exclude(
+            id__in=[perm.id for perm in existing_permissions]
+        )
 
+        same_permissions = []
         for existing_permission in existing_permissions:
             if existing_permission.employee in read_permissions:
-                read_permissions.remove(existing_permission)
-                existing_permission.permission = common_constant.PERMISSION.READ
+                if existing_permission.permission == common_constant.PERMISSION.READ:
+                    same_permissions.append(existing_permission.id)
+                else:
+                    existing_permission.permission = common_constant.PERMISSION.READ
+                read_permissions.remove(existing_permission.employee)
             else:
-                write_permissions.remove(existing_permission)
-                existing_permission.permission = common_constant.PERMISSION.READ_WRITE
+                if existing_permission.permission == common_constant.PERMISSION.READ_WRITE:
+                    same_permissions.append(existing_permission.id)
+                else:
+                    existing_permission.permission = common_constant.PERMISSION.READ_WRITE
+                write_permissions.remove(existing_permission.employee)
 
-        bulk_update(existing_permissions, update_fields=['permission'])
+        existing_permissions = existing_permissions.exclude(
+            id__in=same_permissions)
 
         new_permissions = [
             WorkflowAccess(
@@ -264,15 +288,22 @@ class WorkflowAccessUpdateSerializer(serializers.Serializer):
                 for employee in write_permissions
             ]
         )
+
+        # db operations
+        delete_permissions.delete()
+        bulk_update(existing_permissions, update_fields=['permission'])
         instances = WorkflowAccess.objects.bulk_create(new_permissions)
-        print instances
+
+        send_permission_mail.delay(map(lambda x: x.id, instances))
+
         return instances
 
 
 class WorkflowBaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Workflow
-        fields = ('id', 'template', 'name', 'creator', 'start_at', 'completed_at', 'status')
+        fields = ('id', 'template', 'name', 'creator',
+                  'start_at', 'completed_at', 'status')
         read_only_fields = ('id', 'creator', 'completed_at', 'status')
 
     def validate_start_at(self, start_at):
@@ -364,7 +395,8 @@ class WorkflowCreateSerializer(WorkflowBaseSerializer):
         if(delta_time < timedelta(seconds=common_constant.WORKFLOW_PERIODIC_TASK_SCHEDULE_SECONDS)):
             workflow.status = common_constant.WORKFLOW_STATUS.SCHEDULED
             workflow.save()
-            eta = workflow.start_at if workflow.start_at > current_time else timezone.now() + timedelta(seconds=10)
+            eta = workflow.start_at if workflow.start_at > current_time else timezone.now() + \
+                timedelta(seconds=10)
             start_workflow.apply_async((workflow.id,), eta=eta)
 
         return workflow
@@ -386,11 +418,13 @@ class WorkflowUpdateSerializer(WorkflowBaseSerializer):
 
         instance = self.instance
         if not instance.status == common_constant.WORKFLOW_STATUS.INITIATED:
-            raise serializers.ValidationError(generate_error('cannot update start at as workflow is in progress.'))
+            raise serializers.ValidationError(generate_error(
+                'cannot update start at as workflow is in progress.'))
 
         if instance.start_at - timezone.now() < timedelta(hours=common_constant.WORKFLOW_START_UPDATE_THRESHOLD_HOURS):
             raise serializers.ValidationError(
-                generate_error('could not update start time as workflow will start soon')
+                generate_error(
+                    'could not update start time as workflow will start soon')
             )
 
         return value
