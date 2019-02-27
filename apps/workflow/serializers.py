@@ -243,32 +243,50 @@ class WorkflowAccessUpdateSerializer(serializers.Serializer):
 
         all_permissions = WorkflowAccess.objects.filter(workflow=workflow)
 
-        existing_permissions = all_permissions.filter(
-            Q(employee__in=read_permissions) |
-            Q(employee__in=write_permissions)
+        existing_updatable_permissions = all_permissions.filter(
+            Q(
+                employee__in=read_permissions,
+                permission=common_constant.PERMISSION.READ_WRITE
+            ) | Q(
+                employee__in=write_permissions,
+                permission=common_constant.PERMISSION.READ
+            )
         )
 
-        delete_permissions = all_permissions.exclude(
-            id__in=[perm.id for perm in existing_permissions]
+        existing_non_updatable_permission = all_permissions.filter(
+            Q(
+                employee__in=read_permissions,
+                permission=common_constant.PERMISSION.READ
+            ) | Q(
+                employee__in=write_permissions,
+                permission=common_constant.PERMISSION.READ_WRITE
+            )
         )
 
-        same_permissions = []
-        for existing_permission in existing_permissions:
-            if existing_permission.employee in read_permissions:
-                if existing_permission.permission == common_constant.PERMISSION.READ:
-                    same_permissions.append(existing_permission.id)
-                else:
-                    existing_permission.permission = common_constant.PERMISSION.READ
-                read_permissions.remove(existing_permission.employee)
+        delete_permissions = all_permissions.filter(
+            ~Q(
+                employee__in=read_permissions
+            ) & ~Q(
+                employee__in=write_permissions
+            )
+        )
+        # improve performance
+        read_permissions = set(read_permissions)
+        write_permissions = set(write_permissions)
+        # Update Permission instance.
+        for permission in existing_updatable_permissions:
+            if permission.employee in read_permissions:
+                permission.permission = common_constant.PERMISSION.READ
+                read_permissions.remove(permission.employee)
             else:
-                if existing_permission.permission == common_constant.PERMISSION.READ_WRITE:
-                    same_permissions.append(existing_permission.id)
-                else:
-                    existing_permission.permission = common_constant.PERMISSION.READ_WRITE
-                write_permissions.remove(existing_permission.employee)
+                permission.permission = common_constant.PERMISSION.READ_WRITE
+                write_permissions.remove(permission.employee)
 
-        existing_permissions = existing_permissions.exclude(
-            id__in=same_permissions)
+        for permission in existing_non_updatable_permission:
+            if permission.employee in read_permissions:
+                read_permissions.remove(permission.employee)
+            else:
+                write_permissions.remove(permission.employee)
 
         new_permissions = [
             WorkflowAccess(
@@ -289,18 +307,16 @@ class WorkflowAccessUpdateSerializer(serializers.Serializer):
             ]
         )
 
-        logger.debug('same permission {}'.format(same_permissions))
         logger.debug('delete permission {}'.format(delete_permissions))
-        logger.debug('existing permission {}'.format(existing_permissions))
+        logger.debug('existing permission {}'.format(existing_updatable_permissions))
         logger.debug('new_permissions {}'.format(new_permissions))
 
-        
         # db operations
         delete_permissions.delete()
-        bulk_update(existing_permissions, update_fields=['permission'])
+        bulk_update(existing_updatable_permissions, update_fields=['permission'])
         instances = WorkflowAccess.objects.bulk_create(new_permissions)
 
-        send_permission_mail.apply_async((map(lambda x: x.id, instances),))
+        send_permission_mail.delay(map(lambda x: x.id, instances))
 
         return instances
 

@@ -67,7 +67,8 @@ def start_workflows_periodic():
         timedelta(hours=common_constant.WORKFLOW_START_UPDATE_THRESHOLD_HOURS)
     )
     for workflow in workflows.all():
-        eta = workflow.start_at if workflow.start_at > current_time else timezone.now() + timedelta(seconds=10)
+        eta = workflow.start_at if workflow.start_at > current_time else timezone.now() + \
+            timedelta(seconds=10)
         start_workflow.apply_async((workflow.id,), eta=eta)
 
     workflows.update(status=common_constant.WORKFLOW_STATUS.SCHEDULED)
@@ -122,4 +123,40 @@ def start_tasks_periodic():
 def send_permission_mail(instances):
     instances = WorkflowAccess.objects.filter(id__in=instances)
     for instance in instances:
+        instance.send_mail()
+
+
+@shared_task
+def send_mail_for_workflow(instance, update_fields):
+    '''
+    sends mail on workflow update.
+    '''
+    instance = Workflow.objects.get(id=instance)
+    if instance.status == common_constant.WORKFLOW_STATUS.COMPLETE:
+        instance.send_mail(
+            associated_people_details=False, is_completed=True)
+    elif update_fields:
+        if 'status' in update_fields and instance.status == common_constant.WORKFLOW_STATUS.INPROGRESS:
+            instance.send_mail(
+                associated_people_details=False, is_started=True)
+        elif 'status' in update_fields and instance.status == common_constant.WORKFLOW_STATUS.SCHEDULED:
+            return
+    else:
+        instance.send_mail(associated_people_details=None, is_updated=True)
+
+
+@shared_task
+def send_mail_for_task(instance, update_fields):
+    '''
+    sends mail on task update.
+    '''
+    instance = Task.objects.get(instance)
+    if instance.status == common_constant.TASK_STATUS.COMPLETE:
+        instance.send_mail(is_completed=True)
+    elif update_fields:
+        if 'status' in update_fields and instance.status == common_constant.TASK_STATUS.ONGOING:
+            instance.send_mail(is_started=True)
+        if 'status' in update_fields and instance.status == common_constant.TASK_STATUS.SCHEDULED:
+            return
+    else:
         instance.send_mail()
