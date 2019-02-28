@@ -17,7 +17,7 @@ class UserCompanyAdmin(admin.ModelAdmin):
     UserCompanyAdmin to be use with django admin app.
     '''
     list_display = ('id', 'user', 'company',
-                    'designation', 'status', 'is_admin')
+                    'designation', 'status', 'join_at', 'is_admin')
 
 
 class LinkAdmin(admin.ModelAdmin):

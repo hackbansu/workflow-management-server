@@ -24,11 +24,6 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 
 
-from apps.auth.urls import urlpatterns as auth_urls
-from apps.company.urls import urlpatterns as company_urls
-from apps.workflow_template.urls import urlpatterns as workflow_template_urls
-
-
 schema_view = get_schema_view(
     openapi.Info(
         title="Workflow Platform",
@@ -51,6 +46,7 @@ urlpatterns = [
     url(r'^api/', include('apps.workflow_template.urls', namespace='workflow-template')),
     url(r'^api/', include('apps.auth.urls', namespace='auth')),
     url(r'^api/', include('apps.company.urls', namespace='company')),
+    url(r'^api/', include('apps.report.urls', namespace='report')),
     url(r'^api/', include('apps.workflow.urls', namespace='workflow')),
     url(r'^__debug__/', include(debug_toolbar.urls)),
 ]
