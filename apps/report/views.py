@@ -17,7 +17,7 @@ from apps.common import constant as common_constant
 from apps.company.models import UserCompany
 from apps.workflow.models import Workflow, Task
 from apps.report.permissions import IsCompanyAdmin
-from apps.report.serializers import IJLEmployeeCountSerializer, EmployeeReportSerializer
+from apps.report.serializers import IJLEmployeeCountSerializer, EmployeeReportSerializer, WorkflowReportSerializer
 
 User = get_user_model()
 
@@ -64,7 +64,7 @@ class IJLEmployeeCount(generics.GenericAPIView):
         return Response(response_data, status=status.HTTP_200_OK)
 
 
-class UserReport(generics.RetrieveAPIView):
+class EmployeeReport(generics.RetrieveAPIView):
     queryset = UserCompany.objects.all()
     permission_classes = (IsCompanyAdmin,)
     serializer_class = EmployeeReportSerializer
@@ -145,7 +145,7 @@ def calculate_completed_tasks_time_spent(tasks):
 class WorkflowReport(generics.RetrieveAPIView):
     queryset = Workflow.objects.all()
     permission_classes = (IsCompanyAdmin,)
-    serializer_class = None
+    serializer_class = WorkflowReportSerializer
 
     def retrieve(self, request, *args, **kwargs):
         '''
@@ -168,9 +168,9 @@ class WorkflowReport(generics.RetrieveAPIView):
         ) - workflow.start_at
         data['number_of_assignees'] = data['unique_assignees'].count()
         data['number_of_tasks'] = workflow.tasks.count()
-        data['average_task_complete_time'] = tasks_time.aggregate(Avg('time_spent'))
-        data['assingee_with_min_time'] = tasks_time.aggregate(Min('time_spent')).assignee
-        data['assingee_with_max_time'] = tasks_time.aggregate(Max('time_spent')).assignee
+        data['average_task_complete_time'] = tasks_time.aggregate(Avg('time_spent'))['time_spent__avg']
+        data['assingee_with_min_time'] = tasks_time.earliest('time_spent').assignee
+        data['assingee_with_max_time'] = tasks_time.latest('time_spent').assignee
 
         serializer = self.get_serializer(data)
         return Response(serializer.data)

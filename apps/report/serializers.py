@@ -63,4 +63,6 @@ class WorkflowReportSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Workflow
-        fields = ('name', 'status', 'start_at', 'completed_at', 'creator')
+        fields = ('name', 'status', 'start_at', 'completed_at', 'creator', 'unique_assignees', 'total_time_spend',
+                  'number_of_assignees', 'number_of_tasks', 'average_task_complete_time', 'assingee_with_min_time',
+                  'assingee_with_max_time')
