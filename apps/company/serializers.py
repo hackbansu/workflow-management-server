@@ -3,6 +3,8 @@ from __future__ import unicode_literals
 from django.contrib.auth import get_user_model
 from django.core.exceptions import FieldDoesNotExist
 from django.db.models import Q
+from django.utils import timezone
+
 from rest_framework import serializers
 from rest_framework.generics import get_object_or_404
 
@@ -326,6 +328,7 @@ class InvitationSerializer(ResetPasswordSerializer):
         '''
         user_company = self.context['user_company']
         user_company.status = common_constant.USER_STATUS.ACTIVE
+        user_company.join_at = timezone.now()
         user_company.save()
 
         qs = self.instance.user_companies.filter(
@@ -366,7 +369,7 @@ class EmployeeAdminSerializer(serializers.ModelSerializer):
                     pass
             user.save()
 
-        return super(EmployeeSerializer, self).update(instance, validated_data)
+        return super(EmployeeAdminSerializer, self).update(instance, validated_data)
 
 
 class EmployeeCompanySerializer(serializers.ModelSerializer):

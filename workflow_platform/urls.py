@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
 
+import debug_toolbar
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
@@ -47,6 +48,7 @@ urlpatterns = [
     url(r'^api/', include('apps.company.urls', namespace='company')),
     url(r'^api/', include('apps.report.urls', namespace='report')),
     url(r'^api/', include('apps.workflow.urls', namespace='workflow')),
+    url(r'^__debug__/', include(debug_toolbar.urls)),
 ]
 
 urlpatterns += static(settings.MEDIA_URL,

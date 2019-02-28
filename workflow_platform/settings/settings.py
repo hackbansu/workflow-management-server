@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'drf_yasg',
     'django_filters',
 
+    'debug_toolbar',
     'debug_panel',
     'django_extensions',
     'corsheaders',
@@ -61,17 +62,22 @@ INSTALLED_APPS = [
     'apps.report.apps_config.ReportConfig'
 
 ]
+DEBUG_TOOLBAR_CONFIG = {
+    'INTERCEPT_REDIRECTS': False,
+}
+DEBUG_TOOLBAR_PATCH_SETTINGS = False
+INTERNAL_IPS = ('127.0.0.1',)
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'debug_panel.middleware.DebugPanelMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'debug_panel.middleware.DebugPanelMiddleware',
 ]
 
 ROOT_URLCONF = 'workflow_platform.urls'
