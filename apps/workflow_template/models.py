@@ -32,3 +32,9 @@ class WorkflowTemplate(models.Model):
 
     def __unicode__(self):
         return self.name
+
+    def _history_representation(self):
+        '''
+            method use for getting representation of object for history.
+        '''
+        return self.name

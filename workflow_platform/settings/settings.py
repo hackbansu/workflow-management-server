@@ -58,7 +58,8 @@ INSTALLED_APPS = [
     'apps.auth.apps_config.AuthConfig',
     'apps.company.apps_config.CompanyConfig',
     'apps.workflow.apps_config.WorkflowConfig',
-    'apps.workflow_template.apps_config.WorkflowTemplateConfig'
+    'apps.workflow_template.apps_config.WorkflowTemplateConfig',
+    'apps.history.apps_config.HistoryConfig'
 
 ]
 DEBUG_TOOLBAR_CONFIG = {

@@ -62,6 +62,12 @@ class Company(BaseModel):
     def __unicode__(self):
         return self.name
 
+    def _history_representation(self):
+        '''
+            method use for getting representation of object for history.
+        '''
+        return self.name
+
     def create_mail(self):
         '''
         company creation mail to admins.
@@ -113,6 +119,12 @@ class Link(BaseModel):
             status=self.get_link_type_display()
         )
 
+    def _history_representation(self):
+        '''
+            method use for getting representation of object for history.
+        '''
+        return common_constant.LINK_TYPE[self.link_type]
+
 
 class UserCompany(BaseModel):
     '''
@@ -155,6 +167,12 @@ class UserCompany(BaseModel):
             user=self.user_id,
             company=self.company_id
         )
+
+    def _history_representation(self):
+        '''
+            method use for getting representation of object for history.
+        '''
+        return '%s --> %s' % (self.user._history_representation(), self.company._history_representation())
 
     @property
     def is_active(self):

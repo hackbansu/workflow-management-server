@@ -9,3 +9,4 @@ class WorkflowConfig(AppConfig):
 
     def ready(self):
         import apps.workflow.signals
+        import apps.history.signals
