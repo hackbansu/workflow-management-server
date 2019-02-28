@@ -369,7 +369,7 @@ class EmployeeAdminSerializer(serializers.ModelSerializer):
                     pass
             user.save()
 
-        return super(EmployeeSerializer, self).update(instance, validated_data)
+        return super(EmployeeAdminSerializer, self).update(instance, validated_data)
 
 
 class EmployeeCompanySerializer(serializers.ModelSerializer):
