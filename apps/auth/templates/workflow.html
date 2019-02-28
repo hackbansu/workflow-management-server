@@ -11,12 +11,16 @@
 			<h1>{{ workflow_name }} Workflow
           {% if is_updated %}
             Updated
+          {% elif is_started %}
+            Started
+          {% elif is_complete %}
+            Completed
           {% elif is_creator %}
             Created
           {% elif is_shared %}
             Shared
           {% else %}
-            Started
+            Initiated
           {% endif %}
       </h1>
 		</header>
@@ -28,6 +32,10 @@
         {{ workflow_name }} workflow
         {% if is_updated %}
           has been updated.
+        {% elif is_started %}
+          has been started.
+        {% elif is_completed %}
+          has been completed.
         {% elif is_creator %}
           is created. Cheers.
         {% elif is_shared %}
@@ -37,7 +45,7 @@
           {% endif %}
           permission(s).
         {% else %}
-            is stared.
+            is initiated.
         {% endif %}
         </p>
 

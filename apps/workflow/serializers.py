@@ -15,6 +15,7 @@ from apps.company.models import UserCompany
 from apps.company.serializers import UserCompanySerializer
 from apps.workflow.helpers import is_time_conflicting, is_task_conflicting, get_parent_start_time
 from apps.workflow.models import Workflow, Task, WorkflowAccess
+from apps.workflow.tasks import start_workflow
 from apps.workflow_template.models import WorkflowTemplate
 from apps.workflow_template.serializers import WorkflowTemplateBaseSerializer as WorkflowTemplateBaseSerializer
 
@@ -45,11 +46,22 @@ class TaskUpdateSerializer(TaskBaseSerializer):
 
     def validate_start_delta(self, value):
         '''
-        validates that start delta could not be updated for ongoing task.
+        validates that start delta could not be updated for ongoing task and if parent task is completed.
         '''
         instance = self.instance
         if instance.status == common_constant.TASK_STATUS.ONGOING:
             raise serializers.ValidationError(generate_error('start delta could not be updated for ongoing task'))
+
+        delta_time = None
+        if instance.parent_task and instance.parent_task.status == common_constant.TASK_STATUS.COMPLETE:
+            delta_time = instance.parent_task.completed_at + instance.start_delta - timezone.now()
+        if not instance.parent_task and instance.workflow.status == common_constant.WORKFLOW_STATUS.INPROGRESS:
+            delta_time = instance.workflow.start_at + instance.start_delta - timezone.now()
+
+        if delta_time and delta_time < timedelta(hours=common_constant.TASK_START_UPDATE_THRESHOLD_HOURS):
+            raise serializers.ValidationError(
+                generate_error('could not update start delta as the task will start soon')
+            )
 
         return value
 
@@ -96,15 +108,6 @@ class TaskUpdateSerializer(TaskBaseSerializer):
 
         return data
 
-    def update(self, instance, validated_data):
-        '''
-        override to send mail on task update.
-        '''
-        instance = super(TaskUpdateSerializer, self).update(instance, validated_data)
-        instance.send_mail()
-
-        return instance
-
 
 class WorkflowAccessBaseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -137,9 +140,10 @@ class WorkflowAccessCreateSerializer(WorkflowAccessBaseSerializer):
         fields = WorkflowAccessBaseSerializer.Meta.fields + ('workflow',)
         read_only_fields = WorkflowAccessBaseSerializer.Meta.read_only_fields + ('workflow',)
 
+    @atomic
     def create(self, validated_data):
         '''
-        override to create or update accessor instance.
+        override to create or update accessor instance and send mail.
         '''
         instance, created = WorkflowAccess.objects.get_or_create(
             employee=validated_data['employee'],
@@ -164,8 +168,8 @@ class WorkflowAccessCreateSerializer(WorkflowAccessBaseSerializer):
 class WorkflowBaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Workflow
-        fields = ('id', 'template', 'name', 'creator', 'start_at', 'complete_at',)
-        read_only_fields = ('id', 'creator', 'complete_at')
+        fields = ('id', 'template', 'name', 'creator', 'start_at', 'completed_at', 'status')
+        read_only_fields = ('id', 'creator', 'completed_at', 'status')
 
     def validate_start_at(self, start_at):
         '''
@@ -207,7 +211,8 @@ class WorkflowCreateSerializer(WorkflowBaseSerializer):
     @atomic
     def create(self, validated_data):
         '''
-        override due to nested writes
+        override due to nested writes. Also start workflow if it's start time delta is less than celery scheduled task
+        schedule
         '''
 
         tasks = validated_data.pop('tasks', [])
@@ -245,6 +250,15 @@ class WorkflowCreateSerializer(WorkflowBaseSerializer):
 
         workflow.send_mail(people_assiciated, is_updated=False)
 
+        # if workflow will start before celery scheduled task, send it's start task to celery
+        current_time = timezone.now()
+        delta_time = workflow.start_at - current_time
+        if(delta_time < timedelta(seconds=common_constant.WORKFLOW_PERIODIC_TASK_SCHEDULE_SECONDS)):
+            workflow.status = common_constant.WORKFLOW_STATUS.SCHEDULED
+            workflow.save()
+            eta = workflow.start_at if workflow.start_at > current_time else timezone.now() + timedelta(seconds=10)
+            start_workflow.apply_async((workflow.id,), eta=eta)
+
         return workflow
 
 
@@ -255,10 +269,19 @@ class WorkflowUpdateSerializer(WorkflowBaseSerializer):
     class Meta(WorkflowBaseSerializer.Meta):
         read_only_fields = WorkflowBaseSerializer.Meta.read_only_fields + ('template',)
 
-    def update(self, instance, validated_data):
+    def validate_start_at(self, value):
         '''
-        override due to sending mails on update
+        override to check that user can't update start time within few hours of workflow start time.
         '''
-        instance = super(WorkflowUpdateSerializer, self).update(instance, validated_data)
-        instance.send_mail(associated_people_details=None, is_updated=True)
-        return instance
+        value = super(WorkflowUpdateSerializer, self).validate_start_at(value)
+
+        instance = self.instance
+        if not instance.status == common_constant.WORKFLOW_STATUS.INITIATED:
+            raise serializers.ValidationError(generate_error('cannot update start at as workflow is in progress.'))
+
+        if instance.start_at - timezone.now() < timedelta(hours=common_constant.WORKFLOW_START_UPDATE_THRESHOLD_HOURS):
+            raise serializers.ValidationError(
+                generate_error('could not update start time as workflow will start soon')
+            )
+
+        return value
