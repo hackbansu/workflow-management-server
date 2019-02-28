@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+import logging
 
 from datetime import timedelta
-
 from django.db.transaction import atomic
 from django.conf import settings
 from django.utils import timezone
+from django.db.models import Q
+
+from django_bulk_update.helper import bulk_update
 
 from rest_framework import serializers
 
@@ -15,9 +18,11 @@ from apps.company.models import UserCompany
 from apps.company.serializers import UserCompanySerializer
 from apps.workflow.helpers import is_time_conflicting, is_task_conflicting, get_parent_start_time
 from apps.workflow.models import Workflow, Task, WorkflowAccess
-from apps.workflow.tasks import start_workflow
+from apps.workflow.tasks import start_workflow, send_permission_mail
 from apps.workflow_template.models import WorkflowTemplate
 from apps.workflow_template.serializers import WorkflowTemplateBaseSerializer as WorkflowTemplateBaseSerializer
+
+logger = logging.getLogger(__name__)
 
 
 class TaskBaseSerializer(serializers.ModelSerializer):
@@ -25,7 +30,8 @@ class TaskBaseSerializer(serializers.ModelSerializer):
         model = Task
         fields = ('id', 'workflow', 'title', 'description', 'parent_task',
                   'assignee', 'completed_at', 'start_delta', 'duration', 'status')
-        read_only_fields = ('id', 'workflow', 'parent_task', 'completed_at', 'status')
+        read_only_fields = ('id', 'workflow', 'parent_task',
+                            'completed_at', 'status')
 
     def validate_assignee(self, assignee):
         '''
@@ -33,9 +39,11 @@ class TaskBaseSerializer(serializers.ModelSerializer):
         '''
         employee = self.context['request'].user.active_employee
         if not assignee.company == employee.company:
-            raise serializers.ValidationError(generate_error('New assignee must be of the same company'))
+            raise serializers.ValidationError(generate_error(
+                'New assignee must be of the same company'))
         if not assignee.is_active:
-            raise serializers.ValidationError(generate_error('Assignee must be an active employee'))
+            raise serializers.ValidationError(
+                generate_error('Assignee must be an active employee'))
 
         return assignee
 
@@ -50,17 +58,20 @@ class TaskUpdateSerializer(TaskBaseSerializer):
         '''
         instance = self.instance
         if instance.status == common_constant.TASK_STATUS.ONGOING:
-            raise serializers.ValidationError(generate_error('start delta could not be updated for ongoing task'))
+            raise serializers.ValidationError(generate_error(
+                'start delta could not be updated for ongoing task'))
 
         delta_time = None
         if instance.parent_task and instance.parent_task.status == common_constant.TASK_STATUS.COMPLETE:
-            delta_time = instance.parent_task.completed_at + instance.start_delta - timezone.now()
+            delta_time = instance.parent_task.completed_at + \
+                instance.start_delta - timezone.now()
         if not instance.parent_task and instance.workflow.status == common_constant.WORKFLOW_STATUS.INPROGRESS:
             delta_time = instance.workflow.start_at + instance.start_delta - timezone.now()
 
         if delta_time and delta_time < timedelta(hours=common_constant.TASK_START_UPDATE_THRESHOLD_HOURS):
             raise serializers.ValidationError(
-                generate_error('could not update start delta as the task will start soon')
+                generate_error(
+                    'could not update start delta as the task will start soon')
             )
 
         return value
@@ -69,7 +80,8 @@ class TaskUpdateSerializer(TaskBaseSerializer):
         '''
         override to verify that user can not update assignee if user is only assignee and not admin or write accessor
         '''
-        assignee = super(TaskUpdateSerializer, self).validate_assignee(assignee)
+        assignee = super(TaskUpdateSerializer,
+                         self).validate_assignee(assignee)
 
         employee = self.context['request'].user.active_employee
         instance = self.instance
@@ -81,7 +93,8 @@ class TaskUpdateSerializer(TaskBaseSerializer):
         ).exists())
         if isUserOnlyAssignee:
             raise serializers.ValidationError(
-                generate_error('Assignee does not have permissions to update assignee of the task')
+                generate_error(
+                    'Assignee does not have permissions to update assignee of the task')
             )
 
         return assignee
@@ -99,11 +112,13 @@ class TaskUpdateSerializer(TaskBaseSerializer):
                 task_start_time += get_parent_start_time(task_parent)
             else:
                 task_start_time += instance.workflow.start_at
-            task_end_time = task_start_time + data.get('duration', instance.duration)
+            task_end_time = task_start_time + \
+                data.get('duration', instance.duration)
             employee = data.get('assignee', instance.assignee)
             if is_task_conflicting(employee, task_start_time, task_end_time, ignore_tasks_ids=[instance.id]):
                 raise serializers.ValidationError(generate_error(
-                    'Task time conflict occurred for user {email}'.format(email=employee.user.email)
+                    'Task time conflict occurred for user {email}'.format(
+                        email=employee.user.email)
                 ))
 
         return data
@@ -121,9 +136,11 @@ class WorkflowAccessBaseSerializer(serializers.ModelSerializer):
         '''
         user = self.context['request'].user.active_employee
         if not employee.company == user.company:
-            raise serializers.ValidationError(generate_error('Accessor must be of the same company'))
+            raise serializers.ValidationError(
+                generate_error('Accessor must be of the same company'))
         if not employee.is_active:
-            raise serializers.ValidationError(generate_error('Accessor must be an active employee'))
+            raise serializers.ValidationError(
+                generate_error('Accessor must be an active employee'))
 
         return employee
 
@@ -138,7 +155,13 @@ class WorkflowAccessDestroySerializer(serializers.ModelSerializer):
 class WorkflowAccessCreateSerializer(WorkflowAccessBaseSerializer):
     class Meta(WorkflowAccessBaseSerializer.Meta):
         fields = WorkflowAccessBaseSerializer.Meta.fields + ('workflow',)
-        read_only_fields = WorkflowAccessBaseSerializer.Meta.read_only_fields + ('workflow',)
+        read_only_fields = WorkflowAccessBaseSerializer.Meta.read_only_fields + \
+            ('workflow',)
+        extra_kwargs = {
+            'permission': {
+                'required': True
+            }
+        }
 
     @atomic
     def create(self, validated_data):
@@ -165,10 +188,144 @@ class WorkflowAccessCreateSerializer(WorkflowAccessBaseSerializer):
         return instance
 
 
+class WorkflowAccessUpdateSerializer(serializers.Serializer):
+    '''
+        update the permission of workflow with this serializer.
+    '''
+
+    read_permissions = serializers.PrimaryKeyRelatedField(
+        queryset=UserCompany.objects.all(),
+        many=True
+    )
+
+    write_permissions = serializers.PrimaryKeyRelatedField(
+        queryset=UserCompany.objects.all(),
+        many=True
+    )
+
+    def validate_read_permissions(self, value):
+        request = self.context['request']
+        company = request.user.company
+        logger.debug('mark1')
+        if len(filter(lambda employee: employee.company != company, value)):
+            raise serializers.ValidationError(
+                'all employees must be active and belong to same company'
+            )
+        return value
+
+    def validate_write_permissions(self, value):
+        request = self.context['request']
+        company = request.user.company
+        logger.debug('mark2')
+        if len(filter(lambda employee: employee.company != company, value)):
+            raise serializers.ValidationError(
+                'all employees must be active and belong to same company'
+            )
+        return value
+
+    def validate(self, attr):
+        read_permissions = attr['read_permissions']
+        write_permissions = attr['write_permissions']
+
+        # check for instersection.
+        s_read_permission = set(read_permissions)
+        if len([perm for perm in write_permissions if perm in s_read_permission]):
+            raise serializers.ValidationError(
+                generate_error('permissions must be exclusive')
+            )
+        return attr
+
+    def update(self, workflow, validated_data):
+        read_permissions = validated_data['read_permissions']
+        write_permissions = validated_data['write_permissions']
+
+        logger.debug('read_permissions {}'.format(read_permissions))
+
+        all_permissions = WorkflowAccess.objects.filter(workflow=workflow)
+
+        existing_updatable_permissions = all_permissions.filter(
+            Q(
+                employee__in=read_permissions,
+                permission=common_constant.PERMISSION.READ_WRITE
+            ) | Q(
+                employee__in=write_permissions,
+                permission=common_constant.PERMISSION.READ
+            )
+        )
+
+        existing_non_updatable_permission = all_permissions.filter(
+            Q(
+                employee__in=read_permissions,
+                permission=common_constant.PERMISSION.READ
+            ) | Q(
+                employee__in=write_permissions,
+                permission=common_constant.PERMISSION.READ_WRITE
+            )
+        )
+
+        delete_permissions = all_permissions.filter(
+            ~Q(
+                employee__in=read_permissions
+            ) & ~Q(
+                employee__in=write_permissions
+            )
+        )
+        # improve performance
+        read_permissions = set(read_permissions)
+        write_permissions = set(write_permissions)
+        # Update Permission instance.
+        for permission in existing_updatable_permissions:
+            if permission.employee in read_permissions:
+                permission.permission = common_constant.PERMISSION.READ
+                read_permissions.remove(permission.employee)
+            else:
+                permission.permission = common_constant.PERMISSION.READ_WRITE
+                write_permissions.remove(permission.employee)
+
+        for permission in existing_non_updatable_permission:
+            if permission.employee in read_permissions:
+                read_permissions.remove(permission.employee)
+            else:
+                write_permissions.remove(permission.employee)
+
+        new_permissions = [
+            WorkflowAccess(
+                workflow=workflow,
+                employee=employee,
+                permission=common_constant.PERMISSION.READ
+            )
+            for employee in read_permissions
+        ]
+        new_permissions.extend(
+            [
+                WorkflowAccess(
+                    workflow=workflow,
+                    employee=employee,
+                    permission=common_constant.PERMISSION.READ_WRITE
+                )
+                for employee in write_permissions
+            ]
+        )
+
+        logger.debug('delete permission {}'.format(delete_permissions))
+        logger.debug('existing permission {}'.format(existing_updatable_permissions))
+        logger.debug('new_permissions {}'.format(new_permissions))
+
+        # db operations
+        delete_permissions.delete()
+        bulk_update(existing_updatable_permissions, update_fields=['permission'])
+        instances = WorkflowAccess.objects.bulk_create(new_permissions)
+
+        send_permission_mail.delay(map(lambda x: x.id, instances))
+
+        return instances
+
+
 class WorkflowBaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Workflow
-        fields = ('id', 'template', 'name', 'creator', 'start_at', 'completed_at', 'status')
+        fields = ('id', 'template', 'name', 'creator',
+                  'start_at', 'completed_at', 'status')
         read_only_fields = ('id', 'creator', 'completed_at', 'status')
 
     def validate_start_at(self, start_at):
@@ -176,7 +333,8 @@ class WorkflowBaseSerializer(serializers.ModelSerializer):
         Validate the start date and time is after current date and time.
         '''
         if start_at < timezone.now():
-            raise serializers.ValidationError(generate_error('start date can not be earlier than current time.'))
+            raise serializers.ValidationError(generate_error(
+                'start date can not be earlier than current time.'))
 
         return start_at
 
@@ -201,7 +359,8 @@ class WorkflowCreateSerializer(WorkflowBaseSerializer):
             employee = task['assignee']
             if is_task_conflicting(employee, task_start_time, task_end_time, visited_assignees):
                 raise serializers.ValidationError(generate_error(
-                    'Task time conflict occurred for user {email}'.format(email=employee.user.email)
+                    'Task time conflict occurred for user {email}'.format(
+                        email=employee.user.email)
                 ))
 
             prev_task_end_time = task_end_time
@@ -227,7 +386,8 @@ class WorkflowCreateSerializer(WorkflowBaseSerializer):
 
         prev_task = None
         for task in tasks:
-            prev_task = Task.objects.create(workflow=workflow, parent_task=prev_task, **task)
+            prev_task = Task.objects.create(
+                workflow=workflow, parent_task=prev_task, **task)
             person = people_assiciated.get(prev_task.assignee_id, {})
             if not person:
                 person['employee'] = prev_task.assignee
@@ -240,7 +400,8 @@ class WorkflowCreateSerializer(WorkflowBaseSerializer):
             if accessor.get('employee').id == employee.id:
                 # do not add creator in the accessor list.
                 continue
-            instance = WorkflowAccess.objects.create(workflow=workflow, **accessor)
+            instance = WorkflowAccess.objects.create(
+                workflow=workflow, **accessor)
             person = people_assiciated.get(instance.employee_id, {})
             if not person:
                 person['employee'] = instance.employee
@@ -256,7 +417,8 @@ class WorkflowCreateSerializer(WorkflowBaseSerializer):
         if(delta_time < timedelta(seconds=common_constant.WORKFLOW_PERIODIC_TASK_SCHEDULE_SECONDS)):
             workflow.status = common_constant.WORKFLOW_STATUS.SCHEDULED
             workflow.save()
-            eta = workflow.start_at if workflow.start_at > current_time else timezone.now() + timedelta(seconds=10)
+            eta = workflow.start_at if workflow.start_at > current_time else timezone.now() + \
+                timedelta(seconds=10)
             start_workflow.apply_async((workflow.id,), eta=eta)
 
         return workflow
@@ -267,7 +429,8 @@ class WorkflowUpdateSerializer(WorkflowBaseSerializer):
     Serializer for updating workflow basic details.
     '''
     class Meta(WorkflowBaseSerializer.Meta):
-        read_only_fields = WorkflowBaseSerializer.Meta.read_only_fields + ('template',)
+        read_only_fields = WorkflowBaseSerializer.Meta.read_only_fields + \
+            ('template',)
 
     def validate_start_at(self, value):
         '''
@@ -277,11 +440,13 @@ class WorkflowUpdateSerializer(WorkflowBaseSerializer):
 
         instance = self.instance
         if not instance.status == common_constant.WORKFLOW_STATUS.INITIATED:
-            raise serializers.ValidationError(generate_error('cannot update start at as workflow is in progress.'))
+            raise serializers.ValidationError(generate_error(
+                'cannot update start at as workflow is in progress.'))
 
         if instance.start_at - timezone.now() < timedelta(hours=common_constant.WORKFLOW_START_UPDATE_THRESHOLD_HOURS):
             raise serializers.ValidationError(
-                generate_error('could not update start time as workflow will start soon')
+                generate_error(
+                    'could not update start time as workflow will start soon')
             )
 
         return value

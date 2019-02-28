@@ -49,41 +49,44 @@ class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, Upd
         return self.queryset.filter(Q(tasks__assignee=employee) | Q(accessors__employee=employee)).distinct()
 
     @action(detail=True,
-            methods=['post'],
-            url_path='accessor',
-            serializer_class=workflow_serializers.WorkflowAccessCreateSerializer)
-    @atomic
-    def create_update_accessor(self, request, *args, **kwargs):
+            methods=['get'],
+            url_path='accessor/all',
+            serializer_class=workflow_serializers.WorkflowAccessBaseSerializer)
+    def list_accessors(self, request, *args, **kwargs):
         '''
-        workflow's accessor create or update
+            list all accessors of workflow.
         '''
-        workflow_instance = self.get_object()
-        serializer = self.get_serializer(data=request.data, )
-        serializer.is_valid(raise_exception=True)
-        serializer.save(workflow=workflow_instance)
 
-        return response.Response(serializer.data, status=status.HTTP_200_OK)
+        workflow_instance = self.get_object()
+        serilizer = self.get_serializer(
+            instance=workflow_instance.accessors.all(), many=True)
+        return response.Response(serilizer.data, status=status.HTTP_200_OK)
 
     @action(detail=True,
-            methods=['delete'],
-            url_path='accessor/delete',
-            serializer_class=workflow_serializers.WorkflowAccessDestroySerializer)
-    @atomic
-    def delete_accessor(self, request, *args, **kwargs):
+            methods=['post'],
+            url_path='accessor',
+            serializer_class=workflow_serializers.WorkflowAccessUpdateSerializer)
+    def create_update_accessor(self, request, *args, **kwargs):
         '''
-        workflow's accessor delete
+            workflow's accessor create or update
         '''
         workflow_instance = self.get_object()
-        serializer = self.get_serializer(data=request.data)
+        # update context for workflow instance.
+        context = self.get_serializer_context()
+        context['workflow'] = workflow_instance
+
+        # permission operations.
+        serializer = self.get_serializer(data=request.data, instance=workflow_instance, context=context)
         serializer.is_valid(raise_exception=True)
-        data = serializer.data
+        serializer.save()
 
-        instance = get_object_or_404(WorkflowAccess.objects.all(),
-                                     employee=data['employee'],
-                                     workflow=workflow_instance)
+        # retreive all permissions.
+        serializer = workflow_serializers.WorkflowAccessBaseSerializer(
+            instance=workflow_instance.accessors.all(),
+            many=True
+        )
 
-        instance.delete()
-        return response.Response(status=status.HTTP_204_NO_CONTENT)
+        return response.Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class TaskULView(RetrieveModelMixin, UpdateModelMixin, ListModelMixin, GenericViewSet):

@@ -9,7 +9,7 @@ from django.db.transaction import atomic
 from django.utils import timezone
 
 from apps.common import constant as common_constant
-from apps.workflow.models import Workflow, Task
+from apps.workflow.models import Workflow, Task, WorkflowAccess
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,10 @@ def start_workflow(workflow_id):
     if first_task.start_delta < timedelta(seconds=common_constant.TASK_PERIODIC_TASK_SCHEDULE_SECONDS):
         first_task.status = common_constant.TASK_STATUS.SCHEDULED
         first_task.save()
-        start_task.apply_async((first_task.id,), countdown=first_task.start_delta.seconds)
+        start_task.apply_async(
+            (first_task.id,),
+            countdown=first_task.start_delta.seconds
+        )
 
 
 @shared_task
@@ -60,13 +63,16 @@ def start_workflows_periodic():
     current_time = timezone.now()
     workflows = Workflow.objects.filter(
         status=common_constant.WORKFLOW_STATUS.INITIATED,
-        start_at__lt=current_time + timedelta(hours=common_constant.WORKFLOW_START_UPDATE_THRESHOLD_HOURS)
+        start_at__lt=current_time +
+        timedelta(hours=common_constant.WORKFLOW_START_UPDATE_THRESHOLD_HOURS)
     )
     for workflow in workflows.all():
-        eta = workflow.start_at if workflow.start_at > current_time else timezone.now() + timedelta(seconds=10)
+        eta = workflow.start_at if workflow.start_at > current_time else timezone.now() + \
+            timedelta(seconds=10)
         start_workflow.apply_async((workflow.id,), eta=eta)
 
     workflows.update(status=common_constant.WORKFLOW_STATUS.SCHEDULED)
+
 
 @atomic
 def schedule_tasks_helper(tasks):
@@ -111,3 +117,46 @@ def start_tasks_periodic():
                                 parent_task__isnull=True,
                                 workflow__status=common_constant.WORKFLOW_STATUS.INPROGRESS)
     schedule_tasks_helper(tasks)
+
+
+@shared_task
+def send_permission_mail(instances):
+    instances = WorkflowAccess.objects.filter(id__in=instances)
+    for instance in instances:
+        instance.send_mail()
+
+
+@shared_task
+def send_mail_for_workflow(instance, update_fields):
+    '''
+    sends mail on workflow update.
+    '''
+    instance = Workflow.objects.get(id=instance)
+    if instance.status == common_constant.WORKFLOW_STATUS.COMPLETE:
+        instance.send_mail(
+            associated_people_details=False, is_completed=True)
+    elif update_fields:
+        if 'status' in update_fields and instance.status == common_constant.WORKFLOW_STATUS.INPROGRESS:
+            instance.send_mail(
+                associated_people_details=False, is_started=True)
+        elif 'status' in update_fields and instance.status == common_constant.WORKFLOW_STATUS.SCHEDULED:
+            return
+    else:
+        instance.send_mail(associated_people_details=None, is_updated=True)
+
+
+@shared_task
+def send_mail_for_task(instance, update_fields):
+    '''
+    sends mail on task update.
+    '''
+    instance = Task.objects.get(instance)
+    if instance.status == common_constant.TASK_STATUS.COMPLETE:
+        instance.send_mail(is_completed=True)
+    elif update_fields:
+        if 'status' in update_fields and instance.status == common_constant.TASK_STATUS.ONGOING:
+            instance.send_mail(is_started=True)
+        if 'status' in update_fields and instance.status == common_constant.TASK_STATUS.SCHEDULED:
+            return
+    else:
+        instance.send_mail()
