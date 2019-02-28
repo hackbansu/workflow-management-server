@@ -9,3 +9,4 @@ django-filter==1.1.0
 django-debug-panel==0.8.3
 celery==4.2.1
 drf-yasg==1.13.0
+django-bulk-update==2.2.0

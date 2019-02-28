@@ -17,6 +17,11 @@ class IJLEmployeeCountSerializer(serializers.Serializer):
     month = serializers.DateTimeField()
 
 
+class TopEmployeeSerializer(serializers.Serializer):
+    employee = UserCompanySignupSerializer()
+    avg_task_time = serializers.DurationField()
+
+
 class WorkflowTimeSerializer(serializers.Serializer):
     workflow = WorkflowBaseSerializer()
     total_time_spent = serializers.DurationField()
@@ -53,7 +58,7 @@ class EmployeeReportSerializer(serializers.ModelSerializer):
 
 
 class WorkflowReportSerializer(serializers.ModelSerializer):
-    unique_assignees = UserCompanySignupSerializer()
+    unique_assignees = UserCompanySignupSerializer(many=True)
     total_time_spend = serializers.DurationField()
     number_of_assignees = serializers.IntegerField(min_value=0)
     number_of_tasks = serializers.IntegerField(min_value=0)
