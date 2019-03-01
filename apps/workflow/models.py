@@ -7,10 +7,15 @@ import logging
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import CICharField
 from django.db import models
+from django.contrib.contenttypes.fields import GenericRelation
+
+
+from model_utils.tracker import FieldTracker
 
 from apps.common import constant as common_constant
 from apps.company.models import UserCompany
 from apps.workflow_template.models import WorkflowTemplate
+from apps.history.models import History
 
 User = get_user_model()
 
@@ -38,6 +43,11 @@ class Workflow(models.Model):
         default=common_constant.WORKFLOW_STATUS.INITIATED
     )
 
+    tracker = FieldTracker(
+        fields=['name', 'creator', 'start_at', 'completed_at', 'status'])
+
+    histories = GenericRelation(History, related_query_name='workflows')
+
     def __unicode__(self):
         return '{workflow_name}-#-{creator}'.format(
             workflow_name=self.name,
@@ -50,12 +60,15 @@ class Workflow(models.Model):
         '''
         if not associated_people_details:
             associated_people_details = {}
-            associated_people_details[self.creator_id] = {'employee': self.creator}
+            associated_people_details[self.creator_id] = {
+                'employee': self.creator}
 
             for accessor in self.accessors.all():
-                associated_people_details[accessor.employee_id] = {'employee': accessor.employee}
+                associated_people_details[accessor.employee_id] = {
+                    'employee': accessor.employee}
             for task in self.tasks.all():
-                associated_people_details[task.assignee_id] = {'employee': task.assignee}
+                associated_people_details[task.assignee_id] = {
+                    'employee': task.assignee}
 
         for key, person in associated_people_details.iteritems():
             context = {
@@ -78,12 +91,19 @@ class Workflow(models.Model):
             logger.info('Workflow create/update/shared mail send to {email}'.format(
                 email=person['employee'].user.email))
 
+    def _history_representation(self):
+        '''
+            method use for getting representation of object for history.
+        '''
+        return self.name
+
 
 class Task(models.Model):
     '''
     Tasks in workflows.
     '''
-    workflow = models.ForeignKey(to=Workflow, on_delete=models.CASCADE, related_name='tasks')
+    workflow = models.ForeignKey(
+        to=Workflow, on_delete=models.CASCADE, related_name='tasks')
     title = CICharField(max_length=256)
     description = models.TextField(blank=True, default='')
     parent_task = models.ForeignKey(
@@ -113,11 +133,32 @@ class Task(models.Model):
         default=common_constant.TASK_STATUS.UPCOMING
     )
 
+    histories = GenericRelation(
+        History,
+        related_query_name='tasks'
+    )
+
+    # template id is intentionally excluded from tracking, if required first implement ._history_representation
+
+    tracker = FieldTracker(
+        fields=[
+            'title', 'workflow', 'description',
+            'parent_task', 'assignee', 'completed_at',
+            'start_delta', 'duration', 'status'
+        ]
+    )
+
     def __unicode__(self):
         return '{workflow_id}-#-{title}'.format(
             title=self.title,
             workflow_id=self.workflow_id
         )
+
+    def _history_representation(self):
+        '''
+            method use for getting representation of object for history.
+        '''
+        return self.title
 
     def send_mail(self, is_started=False, is_completed=False):
         '''
@@ -132,27 +173,44 @@ class Task(models.Model):
         }
 
         # send mail to the assignee
-        self.assignee.user.email_user('task.txt', 'task.html', 'Task Update', context)
-        logger.info('Task start/update mail send to {email}'.format(email=self.assignee.user.email))
+        self.assignee.user.email_user(
+            'task.txt', 'task.html', 'Task Update', context)
+        logger.info(
+            'Task start/update mail send to {email}'.format(email=self.assignee.user.email))
 
         # send mail to the  creator if task is updated
         context['name'] = self.workflow.creator.user.name
-        self.workflow.creator.user.email_user('task.txt', 'task.html', 'Task Update', context)
-        logger.info('Task start/update mail send to {email}'.format(email=self.assignee.user.email))
+        self.workflow.creator.user.email_user(
+            'task.txt', 'task.html', 'Task Update', context)
+        logger.info(
+            'Task start/update mail send to {email}'.format(email=self.assignee.user.email))
 
 
 class WorkflowAccess(models.Model):
     '''
     Workflow accees permissions.
     '''
-    employee = models.ForeignKey(UserCompany, on_delete=models.CASCADE, related_name='shared_workflows')
-    workflow = models.ForeignKey(Workflow, on_delete=models.CASCADE, related_name='accessors')
+    employee = models.ForeignKey(
+        UserCompany, on_delete=models.CASCADE, related_name='shared_workflows')
+    workflow = models.ForeignKey(
+        Workflow, on_delete=models.CASCADE, related_name='accessors')
     permission = models.PositiveIntegerField(
         choices=(choice for choice in zip(
             common_constant.PERMISSION,
             common_constant.PERMISSION._fields
         )),
         default=common_constant.PERMISSION.READ
+    )
+
+    tracker = FieldTracker(
+        fields=[
+            'employee', 'workflow', 'permission'
+        ]
+    )
+
+    histories = GenericRelation(
+        History,
+        related_query_name='workflow_accesses'
     )
 
     class Meta:
@@ -164,6 +222,12 @@ class WorkflowAccess(models.Model):
             workflow_id=self.workflow_id,
             permission=self.permission
         )
+
+    def _history_representation(self):
+        '''
+            method use for getting representation of object for history.
+        '''
+        return '%s --> %s' % (self.employee._history_representation(), self.workflow._history_representation())
 
     def send_mail(self):
         '''
@@ -184,4 +248,5 @@ class WorkflowAccess(models.Model):
             'Workflow Update',
             context
         )
-        logger.info('Accessor create/update mail send to {email}'.format(email=self.employee.user.email))
+        logger.info(
+            'Accessor create/update mail send to {email}'.format(email=self.employee.user.email))

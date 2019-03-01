@@ -169,7 +169,7 @@ class EmployeeReport(generics.RetrieveAPIView):
         workflows_associated = Workflow.objects.filter(tasks__assignee=employee).distinct()
         workflows_time = self.get_workflows_time(tasks_associated)
         self.insert_workflow(workflows_time)
-        times_spent_on_worflows = [x['total_time_spent'] for x in workflows_time]
+        times_spent_on_worflows = [x['total_time_spent'] for x in workflows_time] or [timedelta(0)]
 
         data = {
             'first_name': employee.user.first_name,
@@ -181,13 +181,13 @@ class EmployeeReport(generics.RetrieveAPIView):
         data['number_of_workflows_assigned'] = workflows_associated.count()
         data['number_of_tasks'] = tasks_associated.count()
         data['total_time_spent_on_tasks'] = tasks_time.aggregate(total_time=Sum('time_spent'))['total_time']
-        data['Avg_time_spent_on_tasks'] = tasks_time.aggregate(avg_time=Avg('time_spent'))['avg_time']
+        data['avg_time_spent_on_tasks'] = tasks_time.aggregate(avg_time=Avg('time_spent'))['avg_time']
         data['min_time_spent_on_tasks'] = tasks_time.aggregate(min_time=Min('time_spent'))['min_time']
         data['max_time_spent_on_tasks'] = tasks_time.aggregate(max_time=Max('time_spent'))['max_time']
         data['total_time_spent_on_workflows'] = functools.reduce(
             lambda a, b: a+b['total_time_spent'], workflows_time, timedelta(0)
         )
-        data['avg_time_spent_on_workflows'] = data['total_time_spent_on_workflows']/len(workflows_time)
+        data['avg_time_spent_on_workflows'] = data['total_time_spent_on_workflows']/max(len(workflows_time), 1)
         data['max_time_spent_on_workflows'] = max(times_spent_on_worflows)
         data['min_time_spent_on_workflows'] = min(times_spent_on_worflows)
         data['last_task_completed'] = tasks_associated.order_by('-completed_at').first()

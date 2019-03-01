@@ -136,6 +136,12 @@ class User(AbstractUser):
         '''
         return get_object_or_404(self.user_companies, status=common_constant.USER_STATUS.ACTIVE)
 
+    def _history_representation(self):
+        '''
+            method use for getting representation of object for history.
+        '''
+        return self.name
+
     def get_web_token(self):
         '''
         return a token use for reset and invition of user.

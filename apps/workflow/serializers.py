@@ -21,6 +21,7 @@ from apps.workflow.models import Workflow, Task, WorkflowAccess
 from apps.workflow.tasks import start_workflow, send_permission_mail
 from apps.workflow_template.models import WorkflowTemplate
 from apps.workflow_template.serializers import WorkflowTemplateBaseSerializer as WorkflowTemplateBaseSerializer
+from apps.history.helpers import update_history, delete_history, create_history
 
 logger = logging.getLogger(__name__)
 
@@ -206,7 +207,6 @@ class WorkflowAccessUpdateSerializer(serializers.Serializer):
     def validate_read_permissions(self, value):
         request = self.context['request']
         company = request.user.company
-        logger.debug('mark1')
         if len(filter(lambda employee: employee.company != company, value)):
             raise serializers.ValidationError(
                 'all employees must be active and belong to same company'
@@ -216,7 +216,6 @@ class WorkflowAccessUpdateSerializer(serializers.Serializer):
     def validate_write_permissions(self, value):
         request = self.context['request']
         company = request.user.company
-        logger.debug('mark2')
         if len(filter(lambda employee: employee.company != company, value)):
             raise serializers.ValidationError(
                 'all employees must be active and belong to same company'
@@ -235,11 +234,10 @@ class WorkflowAccessUpdateSerializer(serializers.Serializer):
             )
         return attr
 
+    @atomic
     def update(self, workflow, validated_data):
         read_permissions = validated_data['read_permissions']
         write_permissions = validated_data['write_permissions']
-
-        logger.debug('read_permissions {}'.format(read_permissions))
 
         all_permissions = WorkflowAccess.objects.filter(workflow=workflow)
 
@@ -308,17 +306,31 @@ class WorkflowAccessUpdateSerializer(serializers.Serializer):
         )
 
         logger.debug('delete permission {}'.format(delete_permissions))
-        logger.debug('existing permission {}'.format(existing_updatable_permissions))
+        logger.debug(
+            'existing permission {}'.format(
+                existing_updatable_permissions
+            )
+        )
         logger.debug('new_permissions {}'.format(new_permissions))
+
+        # create history
+        [update_history(per) for per in existing_updatable_permissions]
+
+        [delete_history(per) for per in delete_permissions]
 
         # db operations
         delete_permissions.delete()
-        bulk_update(existing_updatable_permissions, update_fields=['permission'])
-        instances = WorkflowAccess.objects.bulk_create(new_permissions)
+        bulk_update(
+            existing_updatable_permissions,
+            update_fields=['permission']
+        )
+        new_instances = WorkflowAccess.objects.bulk_create(new_permissions)
 
-        send_permission_mail.delay(map(lambda x: x.id, instances))
+        [create_history(per) for per in new_instances]
 
-        return instances
+        send_permission_mail.delay(map(lambda x: x.id, new_instances))
+
+        return new_instances
 
 
 class WorkflowBaseSerializer(serializers.ModelSerializer):
