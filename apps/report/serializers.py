@@ -86,14 +86,19 @@ class EmployeeReportSerializer(serializers.ModelSerializer):
                   'last_workflow_completed', 'workflows_completed_monthly')
 
 
+class assingeeTimeSerializer(serializers.Serializer):
+    assignee = EmployeeBasicSerializer()
+    time = serializers.DurationField()
+
+
 class WorkflowReportSerializer(serializers.ModelSerializer):
     unique_assignees = EmployeeBasicSerializer(many=True)
     total_time_spend = serializers.DurationField()
     number_of_assignees = serializers.IntegerField(min_value=0)
     number_of_tasks = serializers.IntegerField(min_value=0)
     average_task_complete_time = serializers.DurationField()
-    assingee_with_min_time = EmployeeBasicSerializer()
-    assingee_with_max_time = EmployeeBasicSerializer()
+    assingee_with_min_time = assingeeTimeSerializer()
+    assingee_with_max_time = assingeeTimeSerializer()
     creator = EmployeeBasicSerializer()
 
     class Meta:

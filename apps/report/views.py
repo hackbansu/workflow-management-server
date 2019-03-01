@@ -22,6 +22,7 @@ from apps.report.serializers import IJLEmployeeCountSerializer, EmployeeReportSe
 from apps.report.serializers import WorkflowReportSerializer, TopEmployeeSerializer
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 DIFF_EXPR_NO_PARENT = ExpressionWrapper(
     F('completed_at') - F('workflow__start_at') - F('start_delta'),
@@ -180,10 +181,11 @@ class EmployeeReport(generics.RetrieveAPIView):
 
         data['number_of_workflows_assigned'] = workflows_associated.count()
         data['number_of_tasks'] = tasks_associated.count()
-        data['total_time_spent_on_tasks'] = tasks_time.aggregate(total_time=Sum('time_spent'))['total_time']
-        data['avg_time_spent_on_tasks'] = tasks_time.aggregate(avg_time=Avg('time_spent'))['avg_time']
-        data['min_time_spent_on_tasks'] = tasks_time.aggregate(min_time=Min('time_spent'))['min_time']
-        data['max_time_spent_on_tasks'] = tasks_time.aggregate(max_time=Max('time_spent'))['max_time']
+        data['total_time_spent_on_tasks'] = tasks_time.aggregate(total_time=Sum('time_spent'))[
+            'total_time'] or timedelta(0)
+        data['avg_time_spent_on_tasks'] = tasks_time.aggregate(avg_time=Avg('time_spent'))['avg_time'] or timedelta(0)
+        data['min_time_spent_on_tasks'] = tasks_time.aggregate(min_time=Min('time_spent'))['min_time'] or timedelta(0)
+        data['max_time_spent_on_tasks'] = tasks_time.aggregate(max_time=Max('time_spent'))['max_time'] or timedelta(0)
         data['total_time_spent_on_workflows'] = functools.reduce(
             lambda a, b: a+b['total_time_spent'], workflows_time, timedelta(0)
         )
@@ -228,14 +230,30 @@ class WorkflowReport(generics.RetrieveAPIView):
         }
 
         data['unique_assignees'] = UserCompany.objects.filter(tasks__workflow=workflow).distinct()
-        data['total_time_spend'] = (
-            workflow.completed_at if workflow.completed_at else timezone.now()
-        ) - workflow.start_at - completed_tasks_delta
+
+        if(workflow.status == common_constant.WORKFLOW_STATUS.INITIATED):
+            data['total_time_spend'] = timedelta(0)
+        else:
+            data['total_time_spend'] = (
+                workflow.completed_at if workflow.completed_at else timezone.now()
+            ) - workflow.start_at - (completed_tasks_delta if completed_tasks_delta else timedelta(0))
+
         data['number_of_assignees'] = data['unique_assignees'].count()
         data['number_of_tasks'] = workflow.tasks.count()
-        data['average_task_complete_time'] = tasks_time.aggregate(Avg('time_spent'))['time_spent__avg']
-        data['assingee_with_min_time'] = tasks_time.earliest('time_spent').assignee
-        data['assingee_with_max_time'] = tasks_time.latest('time_spent').assignee
+        data['average_task_complete_time'] = tasks_time.aggregate(Avg('time_spent'))['time_spent__avg'] or timedelta(0)
+        try:
+            data['assingee_with_min_time'] = {
+                'assignee': tasks_time.earliest('time_spent').assignee,
+                'time': tasks_time.earliest('time_spent').time_spent
+            }
+            data['assingee_with_max_time'] = {
+                'assignee': tasks_time.latest('time_spent').assignee,
+                'time': tasks_time.latest('time_spent').time_spent
+            }
+        except Task.DoesNotExist as e:
+            data['assingee_with_min_time'] = None
+            data['assingee_with_max_time'] = None
+            logger.debug('assingee with min/max time query : {msg}'.format(msg=str(e)))
 
         serializer = self.get_serializer(data)
         return Response(serializer.data)
