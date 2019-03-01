@@ -59,7 +59,7 @@ INSTALLED_APPS = [
     'apps.company.apps_config.CompanyConfig',
     'apps.workflow.apps_config.WorkflowConfig',
     'apps.workflow_template.apps_config.WorkflowTemplateConfig',
-    'apps.history.apps_config.HistoryConfig'
+    'apps.history.apps_config.HistoryConfig',
     'apps.report.apps_config.ReportConfig'
 
 ]

@@ -12,7 +12,7 @@ class HistoryAdmin(admin.ModelAdmin):
     History admin to be used with django admin app.
     '''
     list_display = ('id', 'content_type', 'object_id', 'content_object',
-                    'field_name', 'prev_value', 'next_value', 'action')
+                    'field_name', 'prev_value', 'next_value', 'action', 'created')
 
 
 admin.site.register(History, HistoryAdmin)

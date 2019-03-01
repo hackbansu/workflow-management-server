@@ -108,8 +108,8 @@ class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, Upd
             workflow=workflow_instance)
         history = History.objects.exclude(field_name='id').filter(
             Q(workflows=workflow_instance) |
-            Q(workflow_accesses__in=permission_qs) |
-            Q(tasks__in=tasks_qs)
+            Q(workflow_accesses__in=permission_qs, field_name='permission') |
+            Q(tasks__in=tasks_qs, field_name__in=[])
         )
         serializer = self.get_serializer(instance=history, many=True)
         return response.Response(serializer.data, status=status.HTTP_200_OK)
