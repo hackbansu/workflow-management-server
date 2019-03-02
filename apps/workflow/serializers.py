@@ -26,6 +26,12 @@ from apps.history.helpers import update_history, delete_history, create_history
 logger = logging.getLogger(__name__)
 
 
+class FilteredWorkflowAccessListSerializer(serializers.ListSerializer):
+    def to_representation(self, data):
+        data = data.filter(is_active=True)
+        return super(FilteredWorkflowAccessListSerializer, self).to_representation(self, data)
+
+
 class TaskBaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
@@ -286,6 +292,9 @@ class WorkflowAccessUpdateSerializer(serializers.Serializer):
             else:
                 write_permissions.remove(permission.employee)
 
+        for permission in delete_permissions:
+            permission.is_active = False
+
         new_permissions = [
             WorkflowAccess(
                 workflow=workflow,
@@ -317,9 +326,11 @@ class WorkflowAccessUpdateSerializer(serializers.Serializer):
         [update_history(per) for per in existing_updatable_permissions]
 
         [delete_history(per) for per in delete_permissions]
-
         # db operations
-        delete_permissions.delete()
+        bulk_update(
+            delete_permissions,
+            update_fields=['is_active']
+        )
         bulk_update(
             existing_updatable_permissions,
             update_fields=['permission']

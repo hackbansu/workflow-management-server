@@ -9,7 +9,7 @@ from django.contrib.postgres.fields import CICharField
 from django.db import models
 from django.contrib.contenttypes.fields import GenericRelation
 
-
+from partial_index import PartialIndex, PQ
 from model_utils.tracker import FieldTracker
 
 from apps.common import constant as common_constant
@@ -20,6 +20,11 @@ from apps.history.models import History
 User = get_user_model()
 
 logger = logging.getLogger(__name__)
+
+
+class WorkflowAccessManager(models.Manager):
+    def get_queryset(self):
+        return super(WorkflowAccessManager, self).get_queryset().filter(is_active=True)
 
 
 class Workflow(models.Model):
@@ -208,13 +213,26 @@ class WorkflowAccess(models.Model):
         ]
     )
 
+    is_active = models.BooleanField(default=True)
+
     histories = GenericRelation(
         History,
         related_query_name='workflow_accesses'
     )
 
+    objects = WorkflowAccessManager()
+
+    objects_all = models.Manager()
+
     class Meta:
-        unique_together = ('employee', 'workflow')
+        indexes = [
+            PartialIndex(
+                fields=['employee', 'workflow'],
+                unique=True,
+                where=PQ(is_active=True)
+            )
+        ]
+        # unique_together = ('employee', 'workflow')
 
     def __unicode__(self):
         return '{employee_id}-#-{workflow_id}-#-{permission}'.format(

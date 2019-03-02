@@ -35,9 +35,6 @@ def create_history(instance):
 
 def update_history(instance):
     changes = instance.tracker.changed()
-    print 'xxxxxxxxxxxxxxxxxxxxxxxxxx'
-    print changes
-    print 'xxxxxxxxxxxxxxxxxxxxxxxxxx'
     for key, value in changes.iteritems():
         kwrgs = {
             'content_object': instance,

@@ -32,12 +32,6 @@ UPDATE_METHODS = ('PATCH', 'PUT')
 
 logger = logging.getLogger(__name__)
 
-workflow_content_type = ContentType.objects.get_for_model(Workflow)
-workflow_access_content_type = ContentType.objects.get_for_model(
-    WorkflowAccess
-)
-task_content_type = ContentType.objects.get_for_model(Task)
-
 
 class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, UpdateModelMixin, GenericViewSet):
     queryset = Workflow.objects.all()
@@ -104,12 +98,12 @@ class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, Upd
     def history(self, request, pk):
         workflow_instance = self.get_object()
         tasks_qs = Task.objects.filter(workflow=workflow_instance)
-        permission_qs = WorkflowAccess.objects.filter(
+        permission_qs = WorkflowAccess.objects_all.filter(
             workflow=workflow_instance)
         history = History.objects.exclude(field_name='id').filter(
             Q(workflows=workflow_instance) |
             Q(workflow_accesses__in=permission_qs, field_name='permission') |
-            Q(tasks__in=tasks_qs, field_name__in=[])
+            Q(tasks__in=tasks_qs)
         )
         serializer = self.get_serializer(instance=history, many=True)
         return response.Response(serializer.data, status=status.HTTP_200_OK)
