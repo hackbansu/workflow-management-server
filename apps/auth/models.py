@@ -39,7 +39,6 @@ class UserManager(ParentUserManager):
         if not email:
             raise ValueError('The given email must be set')
         email = self.normalize_email(email)
-        # username = self.model.normalize_username(username)
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
@@ -80,7 +79,7 @@ def usr_profil_dir(_, filename):
 class User(AbstractUser):
     '''
     User model is extention of AbstractUser
-    providing basic details of for user.
+    providing basic details of user.
     '''
     username = None
     first_name = models.CharField(
@@ -112,6 +111,7 @@ class User(AbstractUser):
         return '{first_name} {last_name}'.format(
             first_name=self.first_name,
             last_name=self.last_name)
+        # Mark: change last name condition
 
     @property
     def token(self):
@@ -119,6 +119,7 @@ class User(AbstractUser):
         user auth token.
         '''
         return Token.objects.get_or_create(user=self)[0].key
+        # Mark: Y key
 
     @property
     def company(self):
@@ -138,13 +139,13 @@ class User(AbstractUser):
 
     def _history_representation(self):
         '''
-            method use for getting representation of object for history.
+        method used for getting representation of object for history.
         '''
         return self.name
 
     def get_web_token(self):
         '''
-        return a token use for reset and invition of user.
+        returns a token used for reset password.
         '''
         return '{token}--{uid}'.format(
             token=default_token_generator.make_token(user=self),
@@ -153,7 +154,7 @@ class User(AbstractUser):
 
     def email_user(self, text_template, html_template, subject, context):
         '''
-        email user
+        email user.
         '''
         html_message = render_to_string(html_template, context=context)
         text_message = render_to_string(text_template, context=context)

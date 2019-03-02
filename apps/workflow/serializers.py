@@ -21,7 +21,7 @@ from apps.workflow.models import Workflow, Task, WorkflowAccess
 from apps.workflow.tasks import start_workflow, send_permission_mail
 from apps.workflow_template.models import WorkflowTemplate
 from apps.workflow_template.serializers import WorkflowTemplateBaseSerializer as WorkflowTemplateBaseSerializer
-from apps.history.helpers import update_history, delete_history, create_history
+from apps.history.helpers import update_bulk_history, delete_bulk_history, create_bulk_history
 
 logger = logging.getLogger(__name__)
 
@@ -323,9 +323,9 @@ class WorkflowAccessUpdateSerializer(serializers.Serializer):
         logger.debug('new_permissions {}'.format(new_permissions))
 
         # create history
-        [update_history(per) for per in existing_updatable_permissions]
+        update_bulk_history([per for per in existing_updatable_permissions])
 
-        [delete_history(per) for per in delete_permissions]
+        delete_bulk_history([per for per in delete_permissions])
         # db operations
         bulk_update(
             delete_permissions,
@@ -337,7 +337,7 @@ class WorkflowAccessUpdateSerializer(serializers.Serializer):
         )
         new_instances = WorkflowAccess.objects.bulk_create(new_permissions)
 
-        [create_history(per) for per in new_instances]
+        create_bulk_history([per for per in new_instances])
 
         send_permission_mail.delay(map(lambda x: x.id, new_instances))
 
@@ -411,6 +411,7 @@ class WorkflowCreateSerializer(WorkflowBaseSerializer):
         for task in tasks:
             prev_task = Task.objects.create(
                 workflow=workflow, parent_task=prev_task, **task)
+            # prev task Id required, bulk query ommited.
             person = people_assiciated.get(prev_task.assignee_id, {})
             if not person:
                 person['employee'] = prev_task.assignee

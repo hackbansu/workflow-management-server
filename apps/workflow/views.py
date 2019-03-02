@@ -13,8 +13,10 @@ from django.contrib.contenttypes.models import ContentType
 from rest_framework import response, status, viewsets, mixins
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
-from rest_framework.mixins import (CreateModelMixin, ListModelMixin, RetrieveModelMixin,
-                                   UpdateModelMixin, DestroyModelMixin)
+from rest_framework.mixins import (
+    CreateModelMixin, ListModelMixin, RetrieveModelMixin,
+    UpdateModelMixin, DestroyModelMixin
+)
 from rest_framework.viewsets import GenericViewSet
 
 from apps.common import constant as common_constant
@@ -80,7 +82,10 @@ class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, Upd
 
         # permission operations.
         serializer = self.get_serializer(
-            data=request.data, instance=workflow_instance, context=context)
+            data=request.data,
+            instance=workflow_instance,
+            context=context
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
