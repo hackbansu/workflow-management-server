@@ -27,14 +27,11 @@ class BaseUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('first_name', 'last_name', 'profile_photo', 'profile_photo_url')
+        fields = ('first_name', 'last_name',
+                  'profile_photo', 'profile_photo_url')
         extra_kwargs = {
-            'last_name': {
-                'help_text': 'User last name'
-            },
             'profile_photo': {
                 'write_only': True,
-                'help_text': 'User profile photo'
             },
         }
 
@@ -44,13 +41,22 @@ class InviteUserSerializer(serializers.Serializer):
     Invite user to company with this serializer.
     '''
     email = serializers.EmailField(
-        required=True, help_text='Email field, need to be unique, will be trated as username')
+        required=True,
+        help_text='Email field, need to be unique, will be trated as username'
+    )
     first_name = serializers.CharField(
-        max_length=254, required=True, help_text='User first name')
+        max_length=254,
+        required=True,
+        help_text='User\'s first name'
+    )
     last_name = serializers.CharField(
-        max_length=254, help_text='User last name')
+        max_length=254,
+        help_text='User\'s last name'
+    )
     profile_photo = serializers.ImageField(
-        help_text='User profile photo', required=False)
+        help_text='User profile photo',
+        required=False
+    )
 
 
 class CreateUserSerializer(BaseUserSerializer):
@@ -87,9 +93,10 @@ class UpdateUserSerializer(BaseUserSerializer):
 
 class UserDetailSerializer(UpdateUserSerializer):
     '''
-    User Details email, id, token are extended.
+    User Detail\'s email, id, token are extended.
     '''
     class Meta(UpdateUserSerializer.Meta):
+        # Mark: Y not super
         fields = UpdateUserSerializer.Meta.fields + ('token',)
         extra_kwargs = UpdateUserSerializer.Meta.extra_kwargs.copy()
         extra_kwargs.update({
