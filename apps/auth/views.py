@@ -73,6 +73,7 @@ class ResetPasswordView(RetrieveAPIView, UpdateAPIView):
     patch:
         handle reset password request.
     '''
+    # Mark: Y both Update.
     serializer_class = auth_serializer.ResetPasswordSerializer
     permission_classes = (AllowAny,)
 

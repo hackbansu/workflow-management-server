@@ -21,39 +21,96 @@ def get_value(instance, field):
     return next_value
 
 
+def get_history(content_object, field_name, prev_value, next_value, action):
+    return History(
+        content_object=content_object,
+        field_name=field_name,
+        prev_value=prev_value,
+        next_value=next_value,
+        action=action
+    )
+
+
 def create_history(instance):
-    for field in instance._meta.fields:
-        History.objects.create(
-            content_object=instance,
-            field_name=field.name,
-            prev_value=str(None),
-            next_value=get_value(instance, field.name),
-            action=common_constants.HISTORY_ACTION.CREATE
-        )
-        logger.debug('Create entry %s for %s' % (instance, field.name))
+    histories = [
+        get_history(
+            instance,
+            field.name,
+            str(None),
+            get_value(instance, field.name),
+            common_constants.HISTORY_ACTION.CREATE
+        ) for field in instance._meta.fields
+    ]
+    logger.debug('Create History entry of %s ' % instance)
+    History.objects.bulk_create(histories)
 
 
 def update_history(instance):
     changes = instance.tracker.changed()
-    for key, value in changes.iteritems():
-        kwrgs = {
-            'content_object': instance,
-            'field_name': key,
-            'prev_value': str(value),
-            'next_value': get_value(instance, key),
-            'action': common_constants.HISTORY_ACTION.UPDATE
-        }
-        History.objects.create(**kwrgs)
-        logger.debug('Update entry %s for %s' % (instance, key))
+    histories = [
+        get_history(
+            instance,
+            key,
+            str(value),
+            get_value(instance, key),
+            common_constants.HISTORY_ACTION.UPDATE
+        ) for key, value in changes.iteritems()
+    ]
+    logger.debug('Update History entry of %s' % (instance))
+    History.objects.bulk_create(histories)
 
 
 def delete_history(instance):
-    for field in instance._meta.fields:
-        History.objects.create(
-            content_object=instance,
-            field_name=field.name,
-            prev_value=get_value(instance, field.name),
-            next_value=str(None),
-            action=common_constants.HISTORY_ACTION.DELETE
+    histories = [
+        get_history(
+            instance,
+            field.name,
+            get_value(instance, field.name),
+            str(None),
+            common_constants.HISTORY_ACTION.DELETE
+        ) for field in instance._meta.fields
+    ]
+    logger.debug('Delete History entry of %s' % (instance, field.name))
+
+
+def create_bulk_history(instances):
+    histories = [
+        get_history(
+            instance,
+            field.name,
+            str(None),
+            get_value(instance, field.name),
+            common_constants.HISTORY_ACTION.CREATE
         )
-        logger.debug('History entry %s for %s' % (instance, field.name))
+        for instance in instances for field in instance._meta.fields
+    ]
+    logger.debug('Create Bulk History entry')
+    History.objects.bulk_create(histories)
+
+
+def update_bulk_history(instances):
+    histories = [
+        get_history(
+            instance,
+            key,
+            str(value),
+            get_value(instance, key),
+            common_constants.HISTORY_ACTION.UPDATE
+        ) for instance in instances for key, value in instance.tracker.changed().iteritems()
+    ]
+    logger.debug('Update Bulk History entry')
+    History.objects.bulk_create(histories)
+
+
+def delete_bulk_history(instances):
+    histories = [
+        get_history(
+            instance,
+            field.name,
+            get_value(instance, field.name),
+            str(None),
+            common_constants.HISTORY_ACTION.DELETE
+        ) for instance in instances for field in instance._meta.fields
+    ]
+    logger.debug('Delete Bulk History entry')
+    History.objects.bulk_create(histories)
