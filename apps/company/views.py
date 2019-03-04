@@ -110,7 +110,11 @@ class EmployeeCompanyView(ListModelMixin, UpdateModelMixin, DestroyModelMixin, C
         '''
         employee's company detail
         '''
-        instance = self.get_queryset().get(user=request.user, company=request.user.company)
+        instance = self.get_queryset().get(
+            user=request.user,
+            company=request.user.company,
+            status=common_constant.USER_STATUS.ACTIVE
+        )
         serializer = company_serializer.EmployeeCompanySerializer(
             instance=instance
         )
