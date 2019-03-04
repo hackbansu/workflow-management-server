@@ -150,7 +150,7 @@ def send_mail_for_task(instance, update_fields):
     '''
     sends mail on task update.
     '''
-    instance = Task.objects.get(instance)
+    instance = Task.objects.get(pk=instance)
     if instance.status == common_constant.TASK_STATUS.COMPLETE:
         instance.send_mail(is_completed=True)
     elif update_fields:

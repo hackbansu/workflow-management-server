@@ -6,7 +6,7 @@
 
 ## Setup Instruction
 - Setup [python virtual environment](https://virtualenvwrapper.readthedocs.io/en/latest/)
-- Install project dependencies 
+- Install project dependencies
 ```
 pip install -r requirements.txt
 ```
@@ -15,7 +15,7 @@ pip install -r requirements.txt
 ```
 CREATE EXTENSION citext;
 ```
-- Apply migrations with 
+- Apply migrations with
 ```
 python manage.py migrate
 ```
@@ -23,10 +23,9 @@ python manage.py migrate
 ```
 celery -A workflow_platform worker -l info
 ```
-- Now you can fire your app with 
+- Now you can fire your app with
 ```
 python manage.py runserver
 ```
-**Server will start by default at [http://localhost:8000](http://localhost:8000)**
+**Server will start by default at [http://localhost:8000](http://localhost:8000/api/docs)**
 - Swagger only show endpoint accessable to user only.
- 
