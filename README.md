@@ -29,3 +29,6 @@ python manage.py runserver
 ```
 **Server will start by default at [http://localhost:8000](http://localhost:8000/api/docs)**
 - Swagger only show endpoint accessable to user only.
+
+## Demo Video
+[Video Link](https://drive.google.com/file/d/10OH2VzSU6BpPkY0vtPmzkoKR5CLATYa4/view?usp=drive_web)
