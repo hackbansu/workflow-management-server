@@ -51,7 +51,9 @@ class WorkflowCRULView(CreateModelMixin, ListModelMixin, RetrieveModelMixin, Upd
         if(employee.is_admin):
             return self.queryset.filter(creator__company=employee.company)
 
-        return self.queryset.filter(Q(tasks__assignee=employee) | Q(accessors__employee=employee)).distinct()
+        return self.queryset.filter(
+            Q(tasks__assignee=employee) | Q(accessors__employee=employee, accessors__is_active=True)
+        ).distinct()
 
     @action(detail=True,
             methods=['get'],
@@ -126,7 +128,9 @@ class TaskULView(RetrieveModelMixin, UpdateModelMixin, ListModelMixin, GenericVi
         if(employee.is_admin):
             return self.queryset.filter(workflow__creator__company=employee.company)
 
-        return self.queryset.filter(Q(assignee=employee) | Q(workflow__accessors__employee=employee)).distinct()
+        return self.queryset.filter(
+            Q(assignee=employee) | Q(workflow__accessors__employee=employee, workflow__accessors__is_active=True)
+        ).distinct()
 
     @action(detail=True, methods=['patch'], url_path='completed')
     @atomic

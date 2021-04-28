@@ -5,30 +5,102 @@
     "fields": {
       "name": "Template One",
       "structure": {
-        "name": { "type": "string", "name": "name", "verbose": "Name" },
-        "startTime": { "type": "datetime", "name": "start_time", "verbose": "Start Time" },
-        "expectedEndTime": { "type": "datetime", "name": "expected_end_time", "verbose": "End Time" },
+        "name": {
+          "type": "string",
+          "name": "name",
+          "verbose": "Name"
+        },
+        "startTime": {
+          "type": "datetime",
+          "name": "start_time",
+          "verbose": "Start Time"
+        },
+        "expectedEndTime": {
+          "type": "datetime",
+          "name": "expected_end_time",
+          "verbose": "End Time"
+        },
         "tasks": [
           {
-            "deltaTimeMinutes": { "type": "number", "name": "delta_time_minutes", "verbose": "Delta Time Minutes" },
-            "assignee": { "type": "employee", "name": "assignee", "verbose": "Assignee" },
-            "deltaTimeHours": { "type": "number", "name": "delta_time_hours", "verbose": "Delta Time Hours" },
-            "description": { "type": "textArea", "name": "description", "verbose": "Description" },
-            "title": { "type": "string", "name": "title", "verbose": "Title" }
+            "deltaTimeMinutes": {
+              "type": "number",
+              "name": "delta_time_minutes",
+              "verbose": "Delta Time Minutes"
+            },
+            "assignee": {
+              "type": "employee",
+              "name": "assignee",
+              "verbose": "Assignee"
+            },
+            "deltaTimeHours": {
+              "type": "number",
+              "name": "delta_time_hours",
+              "verbose": "Delta Time Hours"
+            },
+            "description": {
+              "type": "textArea",
+              "name": "description",
+              "verbose": "Description"
+            },
+            "title": {
+              "type": "string",
+              "name": "title",
+              "verbose": "Title"
+            }
           },
           {
-            "deltaTimeMinutes": { "type": "number", "name": "delta_time_minutes", "verbose": "Delta Time Minutes" },
-            "assignee": { "type": "employee", "name": "assignee", "verbose": "Assignee" },
-            "deltaTimeHours": { "type": "number", "name": "delta_time_hours", "verbose": "Delta Time Hours" },
-            "description": { "type": "textArea", "name": "description", "verbose": "Description" },
-            "title": { "type": "string", "name": "title", "verbose": "Title" }
+            "deltaTimeMinutes": {
+              "type": "number",
+              "name": "delta_time_minutes",
+              "verbose": "Delta Time Minutes"
+            },
+            "assignee": {
+              "type": "employee",
+              "name": "assignee",
+              "verbose": "Assignee"
+            },
+            "deltaTimeHours": {
+              "type": "number",
+              "name": "delta_time_hours",
+              "verbose": "Delta Time Hours"
+            },
+            "description": {
+              "type": "textArea",
+              "name": "description",
+              "verbose": "Description"
+            },
+            "title": {
+              "type": "string",
+              "name": "title",
+              "verbose": "Title"
+            }
           },
           {
-            "deltaTimeMinutes": { "type": "number", "name": "delta_time_minutes", "verbose": "Delta Time Minutes" },
-            "assignee": { "type": "employee", "name": "assignee", "verbose": "Assignee" },
-            "deltaTimeHours": { "type": "number", "name": "delta_time_hours", "verbose": "Delta Time Hours" },
-            "description": { "type": "textArea", "name": "description", "verbose": "Description" },
-            "title": { "type": "string", "name": "title", "verbose": "Title" }
+            "deltaTimeMinutes": {
+              "type": "number",
+              "name": "delta_time_minutes",
+              "verbose": "Delta Time Minutes"
+            },
+            "assignee": {
+              "type": "employee",
+              "name": "assignee",
+              "verbose": "Assignee"
+            },
+            "deltaTimeHours": {
+              "type": "number",
+              "name": "delta_time_hours",
+              "verbose": "Delta Time Hours"
+            },
+            "description": {
+              "type": "textArea",
+              "name": "description",
+              "verbose": "Description"
+            },
+            "title": {
+              "type": "string",
+              "name": "title",
+              "verbose": "Title"
+            }
           }
         ]
       },
@@ -41,23 +113,75 @@
     "fields": {
       "name": "Template Two",
       "structure": {
-        "name": { "type": "string", "name": "name", "verbose": "WorkFlow Name" },
-        "startTime": { "type": "datetime", "name": "start_time", "verbose": "Start Time" },
-        "expectedEndTime": { "type": "datetime", "name": "expected_end_time", "verbose": "Expected End Time" },
+        "name": {
+          "type": "string",
+          "name": "name",
+          "verbose": "WorkFlow Name"
+        },
+        "startTime": {
+          "type": "datetime",
+          "name": "start_time",
+          "verbose": "Start Time"
+        },
+        "expectedEndTime": {
+          "type": "datetime",
+          "name": "expected_end_time",
+          "verbose": "Expected End Time"
+        },
         "tasks": [
           {
-            "deltaTimeMinutes": { "type": "minutetime", "name": "delta_time_minutes", "verbose": "Delta Time Minutes" },
-            "assignee": { "type": "employee", "name": "assignee", "verbose": "Assignee" },
-            "deltaTimeHours": { "type": "hourtime", "name": "delta_time_hours", "verbose": "Delta Time Hours" },
-            "description": { "type": "textArea", "name": "description", "verbose": "Description" },
-            "title": { "type": "string", "name": "title", "verbose": "Title" }
+            "deltaTimeMinutes": {
+              "type": "minutetime",
+              "name": "delta_time_minutes",
+              "verbose": "Delta Time Minutes"
+            },
+            "assignee": {
+              "type": "employee",
+              "name": "assignee",
+              "verbose": "Assignee"
+            },
+            "deltaTimeHours": {
+              "type": "hourtime",
+              "name": "delta_time_hours",
+              "verbose": "Delta Time Hours"
+            },
+            "description": {
+              "type": "textArea",
+              "name": "description",
+              "verbose": "Description"
+            },
+            "title": {
+              "type": "string",
+              "name": "title",
+              "verbose": "Title"
+            }
           },
           {
-            "deltaTimeMinutes": { "type": "number", "name": "delta_time_minutes", "verbose": "Delta Time Minutes" },
-            "assignee": { "type": "employee", "name": "assignee", "verbose": "Assignee" },
-            "deltaTimeHours": { "type": "number", "name": "delta_time_hours", "verbose": "Delta Time Hours" },
-            "description": { "type": "textArea", "name": "description", "verbose": "Description" },
-            "title": { "type": "string", "name": "title", "verbose": "Title" }
+            "deltaTimeMinutes": {
+              "type": "number",
+              "name": "delta_time_minutes",
+              "verbose": "Delta Time Minutes"
+            },
+            "assignee": {
+              "type": "employee",
+              "name": "assignee",
+              "verbose": "Assignee"
+            },
+            "deltaTimeHours": {
+              "type": "number",
+              "name": "delta_time_hours",
+              "verbose": "Delta Time Hours"
+            },
+            "description": {
+              "type": "textArea",
+              "name": "description",
+              "verbose": "Description"
+            },
+            "title": {
+              "type": "string",
+              "name": "title",
+              "verbose": "Title"
+            }
           }
         ]
       },

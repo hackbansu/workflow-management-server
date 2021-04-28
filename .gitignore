@@ -6,3 +6,4 @@ media/
 system.log
 celerybeat-scheduleurls.txt
 urls.txt
+.python-version
